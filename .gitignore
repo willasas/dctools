@@ -149,3 +149,6 @@ task.json
 
 # Test directories
 test_numbering/
+
+# History files
+.history/
