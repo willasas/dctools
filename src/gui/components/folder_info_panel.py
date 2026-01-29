@@ -261,7 +261,8 @@ class FolderInfoPanel(ttk.Frame):
 
             self.main_app.update_status(f"文件分析完成，共处理 {len(self.folder_paths)} 个文件夹")
 
-            if messagebox.askyesno("分析完成", f"分析结果已保存到:\n{output_path}\n\n是否打开文件？"):
+            # 使用main_app.show_message来显示消息框，确保居中显示
+            if self.main_app.show_message("分析完成", f"分析结果已保存到:\n{output_path}\n\n是否打开文件？", "askyesno"):
                 os.startfile(output_path)
 
         except Exception as e:

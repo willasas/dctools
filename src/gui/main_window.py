@@ -161,16 +161,33 @@ class MainWindow:
         显示消息框
         :param title: 标题
         :param message: 消息内容
-        :param type: 消息类型 (info, success, warning, error)
+        :param type: 消息类型 (info, success, warning, error, askyesno)
+        :return: 对于askyesno类型，返回用户的选择(True/False)，其他类型返回None
         """
-        if type == "success":
-            messagebox.showinfo(title, message)
-        elif type == "warning":
-            messagebox.showwarning(title, message)
-        elif type == "error":
-            messagebox.showerror(title, message)
-        else:
-            messagebox.showinfo(title, message)
+        try:
+            # 使用root作为父窗口显示消息框
+            if type == "success":
+                messagebox.showinfo(title, message, parent=self.root)
+            elif type == "warning":
+                messagebox.showwarning(title, message, parent=self.root)
+            elif type == "error":
+                messagebox.showerror(title, message, parent=self.root)
+            elif type == "askyesno":
+                return messagebox.askyesno(title, message, parent=self.root)
+            else:
+                messagebox.showinfo(title, message, parent=self.root)
+        except Exception as e:
+            # 兼容模式：如果父窗口有问题，使用默认消息框
+            if type == "success":
+                messagebox.showinfo(title, message)
+            elif type == "warning":
+                messagebox.showwarning(title, message)
+            elif type == "error":
+                messagebox.showerror(title, message)
+            elif type == "askyesno":
+                return messagebox.askyesno(title, message)
+            else:
+                messagebox.showinfo(title, message)
 
 
 def run_gui():

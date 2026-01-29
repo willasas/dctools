@@ -206,8 +206,12 @@ def export_to_txt(folder_paths, output_path=None, recursive=True):
     :return: 输出文件路径
     """
     if output_path is None:
+        # 保存到项目的result文件夹
+        result_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "result")
+        # 确保result文件夹存在
+        os.makedirs(result_folder, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_path = f"detailed_files_analysis_{timestamp}.txt"
+        output_path = os.path.join(result_folder, f"detailed_files_analysis_{timestamp}.txt")
     
     with open(output_path, 'w', encoding='utf-8') as f:
         for folder_path in folder_paths:
@@ -240,8 +244,12 @@ def export_to_csv(folder_paths, output_path=None, recursive=True):
     :return: 输出文件路径
     """
     if output_path is None:
+        # 保存到项目的result文件夹
+        result_folder = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "result")
+        # 确保result文件夹存在
+        os.makedirs(result_folder, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_path = f"detailed_files_analysis_{timestamp}.csv"
+        output_path = os.path.join(result_folder, f"detailed_files_analysis_{timestamp}.csv")
     
     with open(output_path, 'w', encoding='utf-8-sig', newline='') as f:
         writer = csv.writer(f)

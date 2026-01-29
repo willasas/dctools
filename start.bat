@@ -1,69 +1,68 @@
 @echo off
-chcp 65001 >nul
 
-rem AI文件管理工具启动脚本
-rem 版本: 1.0.0
-rem 功能: 检查Python环境、安装依赖、启动主程序
+rem AI File Management Tool - Start Script
+rem Version: 1.0.0
+rem Function: Check Python environment, install dependencies, start main program
 
 echo ========================================
-echo         AI文件管理工具启动器
+echo      AI File Management Tool
 echo ========================================
 echo.
 
-rem 检查Python是否安装
+rem Check if Python is installed
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo 错误: 未找到Python环境
-    echo 请先安装Python 3.8或更高版本
+    echo Error: Python environment not found
+    echo Please install Python 3.8 or higher first
     echo.
-    echo 可以从以下网址下载:
+    echo You can download it from:
     echo https://www.python.org/downloads/
     echo.
     pause
     exit /b 1
 )
 
-echo 找到Python环境
+echo Python environment found
 
-rem 检查依赖是否需要安装
+rem Check if dependencies need to be installed
 if not exist ".installed" (
-    echo 首次运行，正在安装依赖...
+    echo First run, installing dependencies...
     echo.
 
-    rem 安装依赖
+    rem Install dependencies
     pip install -r requirements.txt
     if %errorlevel% neq 0 (
-        echo 错误: 依赖安装失败
-        echo 请检查网络连接或手动安装依赖
+        echo Error: Failed to install dependencies
+        echo Please check network connection or install dependencies manually
         echo.
         pause
         exit /b 1
     )
 
-    rem 创建安装标记文件
-    echo 依赖安装成功 > .installed
+    rem Create installation marker file
+    echo Dependencies installed successfully > .installed
     echo.
 )
 
-echo 依赖检查完成
+echo Dependencies check completed
 
-rem 启动主程序 (默认启动GUI界面)
-echo 正在启动AI文件管理工具...
+rem Start main program (default: start GUI interface)
+echo Starting AI File Management Tool...
 echo.
-echo 提示: 按 Ctrl+C 退出程序
+echo Tip: Press Ctrl+C to exit the program
 echo.
 python -c "from src.gui import run_gui; run_gui()"
 
-rem 检查程序退出状态
+rem Check program exit status
 if %errorlevel% neq 0 (
     echo.
-    echo 错误: 程序启动失败
-    echo 请检查错误信息并尝试解决
+    echo Error: Program failed to start
+    echo Please check error messages and try to resolve
     echo.
     pause
     exit /b 1
 )
 
 echo.
-echo 程序已退出
+echo Program exited
 pause

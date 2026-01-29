@@ -14,6 +14,9 @@ def get_pinyin_name(chinese_name):
 def get_file_info(file_path):
     """获取文件详细信息"""
     try:
+        # 确保文件路径是绝对路径且使用正确的路径分隔符
+        file_path = os.path.abspath(file_path)
+        
         stat = os.stat(file_path)
         filename = os.path.basename(file_path)
         ext = os.path.splitext(filename)[1].lower()
@@ -33,8 +36,33 @@ def get_file_info(file_path):
             "路径": file_path
         }
     except Exception as e:
-        print(f"⚠️ 获取文件信息失败 {file_path}: {str(e)}")
-        return None
+        # 尝试使用不同的路径处理方法
+        try:
+            # 尝试对路径进行编码和解码
+            if isinstance(file_path, str):
+                # 尝试使用utf-8编码
+                file_path = file_path.encode('utf-8').decode('utf-8')
+            stat = os.stat(file_path)
+            filename = os.path.basename(file_path)
+            ext = os.path.splitext(filename)[1].lower()
+            size = stat.st_size
+            create_time = datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S")
+            modify_time = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+            
+            return {
+                "文件名": filename,
+                "扩展名": ext,
+                "大小(字节)": size,
+                "大小(KB)": round(size / 1024, 2),
+                "大小(MB)": round(size / (1024 * 1024), 2),
+                "创建时间": create_time,
+                "修改时间": modify_time,
+                "文件夹": os.path.dirname(file_path),
+                "路径": file_path
+            }
+        except Exception as e2:
+            print(f"⚠️ 获取文件信息失败 {file_path}: {str(e)}")
+            return None
 
 def export_to_excel(file_list, export_name="文件清单", output_dir=None):
     """
