@@ -1,6 +1,7 @@
 """文件夹信息模块"""
 import os
 import json
+import csv
 from datetime import datetime
 
 
@@ -30,10 +31,8 @@ def get_folder_info(folder_path, recursive=True):
         "subfolders": []
     }
     
-    # 分析文件夹
     _analyze_folder(folder_path, info, recursive)
     
-    # 格式化大小
     info["total_size_formatted"] = _format_size(info["total_size"])
     
     print(f"✅ 文件夹分析完成!")
@@ -46,12 +45,7 @@ def get_folder_info(folder_path, recursive=True):
 
 
 def _analyze_folder(folder_path, info, recursive):
-    """
-    递归分析文件夹
-    :param folder_path: 文件夹路径
-    :param info: 信息字典
-    :param recursive: 是否递归
-    """
+    """递归分析文件夹"""
     info["total_folders"] += 1
     
     try:
@@ -59,14 +53,10 @@ def _analyze_folder(folder_path, info, recursive):
             item_path = os.path.join(folder_path, item)
             
             if os.path.isfile(item_path):
-                # 分析文件
                 info["total_files"] += 1
-                
-                # 计算大小
                 size = os.path.getsize(item_path)
                 info["total_size"] += size
                 
-                # 分析文件类型
                 ext = os.path.splitext(item)[1].lower()
                 if ext not in info["file_types"]:
                     info["file_types"][ext] = {
@@ -78,7 +68,6 @@ def _analyze_folder(folder_path, info, recursive):
                 info["file_types"][ext]["total_size_formatted"] = _format_size(info["file_types"][ext]["total_size"])
                 
             elif os.path.isdir(item_path) and recursive:
-                # 递归分析子文件夹
                 subfolder_info = {
                     "name": item,
                     "path": item_path,
@@ -86,13 +75,8 @@ def _analyze_folder(folder_path, info, recursive):
                     "folders": 0,
                     "size": 0
                 }
-                
-                # 递归分析
                 _analyze_subfolder(item_path, subfolder_info)
-                
-                # 格式化大小
                 subfolder_info["size_formatted"] = _format_size(subfolder_info["size"])
-                
                 info["subfolders"].append(subfolder_info)
                 
     except Exception as e:
@@ -100,11 +84,7 @@ def _analyze_folder(folder_path, info, recursive):
 
 
 def _analyze_subfolder(folder_path, info):
-    """
-    分析子文件夹
-    :param folder_path: 文件夹路径
-    :param info: 信息字典
-    """
+    """分析子文件夹"""
     info["folders"] += 1
     
     try:
@@ -121,13 +101,65 @@ def _analyze_subfolder(folder_path, info):
         print(f"⚠️ 分析子文件夹失败 {folder_path}: {str(e)}")
 
 
-def analyze_folder_structure(folder_path, output_format="json"):
+def get_detailed_file_info(file_path):
     """
-    分析文件夹结构并输出
+    获取文件的详细信息
+    :param file_path: 文件路径
+    :return: 文件信息字典
+    """
+    try:
+        stat = os.stat(file_path)
+        return {
+            "file_name": os.path.basename(file_path),
+            "extension": os.path.splitext(file_path)[1].lower(),
+            "size_bytes": stat.st_size,
+            "size_formatted": _format_size(stat.st_size),
+            "full_path": os.path.abspath(file_path),
+            "modification_time": datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+            "creation_time": datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S")
+        }
+    except Exception as e:
+        print(f"⚠️ 获取文件信息失败 {file_path}: {str(e)}")
+        return None
+
+
+def get_all_files_info(folder_path, recursive=True):
+    """
+    获取文件夹内所有文件的详细信息
     :param folder_path: 文件夹路径
-    :param output_format: 输出格式 (json/text)
-    :return: 分析结果
+    :param recursive: 是否递归子文件夹
+    :return: 文件信息列表
     """
+    if not os.path.exists(folder_path):
+        raise FileNotFoundError(f"文件夹不存在: {folder_path}")
+    
+    if not os.path.isdir(folder_path):
+        raise ValueError(f"路径不是文件夹: {folder_path}")
+    
+    print(f"\n📁 开始获取文件详细信息: {folder_path}")
+    
+    files_info = []
+    
+    try:
+        for root, dirs, files in os.walk(folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                file_info = get_detailed_file_info(file_path)
+                if file_info:
+                    files_info.append(file_info)
+            
+            if not recursive:
+                break
+                
+    except Exception as e:
+        print(f"⚠️ 获取文件列表失败 {folder_path}: {str(e)}")
+    
+    print(f"✅ 获取到 {len(files_info)} 个文件信息")
+    return files_info
+
+
+def analyze_folder_structure(folder_path, output_format="text"):
+    """分析文件夹结构并输出"""
     info = get_folder_info(folder_path)
     
     if output_format == "json":
@@ -136,7 +168,6 @@ def analyze_folder_structure(folder_path, output_format="json"):
         print(result)
         return result
     else:
-        # 文本格式输出
         result = []
         result.append(f"文件夹分析报告")
         result.append(f"=" * 50)
@@ -166,12 +197,77 @@ def analyze_folder_structure(folder_path, output_format="json"):
         return result_text
 
 
+def export_to_txt(folder_paths, output_path=None, recursive=True):
+    """
+    导出文件夹分析结果到TXT格式
+    :param folder_paths: 文件夹路径列表
+    :param output_path: 输出文件路径
+    :param recursive: 是否递归子文件夹
+    :return: 输出文件路径
+    """
+    if output_path is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_path = f"detailed_files_analysis_{timestamp}.txt"
+    
+    with open(output_path, 'w', encoding='utf-8') as f:
+        for folder_path in folder_paths:
+            folder_path = os.path.abspath(folder_path)
+            f.write(f"\n{'=' * 60}\n")
+            f.write(f"文件夹: {folder_path}\n")
+            f.write(f"{'=' * 60}\n\n")
+            
+            files_info = get_all_files_info(folder_path, recursive)
+            
+            for file_info in files_info:
+                f.write(f"文件名称: {file_info['file_name']}\n")
+                f.write(f"文件扩展名: {file_info['extension']}\n")
+                f.write(f"文件大小: {file_info['size_formatted']} ({file_info['size_bytes']} 字节)\n")
+                f.write(f"文件完整路径: {file_info['full_path']}\n")
+                f.write(f"文件修改时间: {file_info['modification_time']}\n")
+                f.write(f"文件创建时间: {file_info['creation_time']}\n")
+                f.write(f"\n{'-' * 40}\n\n")
+    
+    print(f"✅ TXT报告已保存到: {output_path}")
+    return output_path
+
+
+def export_to_csv(folder_paths, output_path=None, recursive=True):
+    """
+    导出文件夹分析结果到CSV格式
+    :param folder_paths: 文件夹路径列表
+    :param output_path: 输出文件路径
+    :param recursive: 是否递归子文件夹
+    :return: 输出文件路径
+    """
+    if output_path is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_path = f"detailed_files_analysis_{timestamp}.csv"
+    
+    with open(output_path, 'w', encoding='utf-8-sig', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['文件名称', '文件扩展名', '文件大小(字节)', '文件大小', '文件完整路径', '文件修改时间', '文件创建时间'])
+        
+        for folder_path in folder_paths:
+            folder_path = os.path.abspath(folder_path)
+            files_info = get_all_files_info(folder_path, recursive)
+            
+            for file_info in files_info:
+                writer.writerow([
+                    file_info['file_name'],
+                    file_info['extension'],
+                    file_info['size_bytes'],
+                    file_info['size_formatted'],
+                    file_info['full_path'],
+                    file_info['modification_time'],
+                    file_info['creation_time']
+                ])
+    
+    print(f"✅ CSV报告已保存到: {output_path}")
+    return output_path
+
+
 def _format_size(size_bytes):
-    """
-    格式化文件大小
-    :param size_bytes: 字节大小
-    :return: 格式化后的大小字符串
-    """
+    """格式化文件大小"""
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
         if size_bytes < 1024.0:
             return f"{size_bytes:.2f} {unit}"

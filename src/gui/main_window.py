@@ -2,6 +2,16 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import os
+
+# 尝试导入tkinterdnd2
+use_tkinterdnd = False
+try:
+    from tkinterdnd2 import TkinterDnD
+    use_tkinterdnd = True
+    print("tkinterdnd2 库可用，启用拖拽功能")
+except ImportError:
+    print("tkinterdnd2 库不可用，使用标准Tkinter")
+
 from src.gui.components import (
     FolderCreatorPanel,
     FileRenamerPanel,
@@ -95,7 +105,7 @@ class MainWindow:
         self.notebook.add(self.file_renamer_panel, text="✏️ 文件重命名")
         self.notebook.add(self.duplicate_remover_panel, text="🗑️ 文件去重")
         self.notebook.add(self.excel_exporter_panel, text="📊 Excel导出")
-        self.notebook.add(self.folder_info_panel, text="📋 文件夹信息")
+        self.notebook.add(self.folder_info_panel, text="📋 文件夹信息分析")
 
         # 设置选项卡样式
         style = ttk.Style()
@@ -165,9 +175,14 @@ class MainWindow:
 
 def run_gui():
     """
-    运行GUI
+    启动GUI界面
     """
-    root = tk.Tk()
+    if use_tkinterdnd:
+        root = TkinterDnD.Tk()
+        print("使用 TkinterDnD 创建窗口，支持拖拽功能")
+    else:
+        root = tk.Tk()
+        print("使用标准 Tkinter 创建窗口")
     app = MainWindow(root)
     root.mainloop()
 
