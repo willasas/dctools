@@ -1,0 +1,13 @@
+# 核心依赖
+pypinyin==0.50.0
+pandas==1.5.3
+openpyxl==3.1.2
+numpy==1.23.5
+
+# 图像处理（可选）
+# opencv-python==4.8.0
+# Pillow==10.0.0
+# scikit-image==0.22.0
+
+# 音频处理（可选）
+# librosa==0.10.0

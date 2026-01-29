@@ -1,0 +1,11 @@
+# AI文件管理工具 - 项目依赖
+# 安装命令: pip install -r requirements.txt
+pypinyin>=0.49.0          # 中文拼音转换
+pandas>=2.0.0            # 数据处理
+openpyxl>=3.1.0          # Excel文件处理
+opencv-python>=4.8.0     # 图像处理和视频处理
+Pillow>=10.0.0           # 图像处理库
+scikit-image>=0.21.0     # 图像相似度计算
+librosa>=0.10.0          # 音频处理和特征提取
+numpy>=1.24.0            # 数值计算
+scipy>=1.10.0            # 科学计算
