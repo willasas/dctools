@@ -137,8 +137,9 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# Batch files
+# Batch files (except start.bat)
 *.bat
+!start.bat
 
 # Installed flag
 .installed
