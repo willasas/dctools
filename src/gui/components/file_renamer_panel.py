@@ -2,6 +2,7 @@
 import os
 import tkinter as tk
 from tkinter import ttk, filedialog, simpledialog
+import threading
 
 
 class FileRenamerPanel(ttk.Frame):
@@ -143,6 +144,15 @@ class FileRenamerPanel(ttk.Frame):
         self.preview_text = tk.Text(preview_frame, height=8, width=60, font=("Courier New", 10))
         self.preview_text.pack(fill=tk.BOTH, expand=True, padx=5)
 
+        # 进度条
+        progress_frame = ttk.Frame(self)
+        progress_frame.pack(fill=tk.X, pady=10)
+        self.progress_var = tk.DoubleVar()
+        self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_var, maximum=100)
+        self.progress_bar.pack(fill=tk.X, padx=5)
+        self.progress_label = ttk.Label(progress_frame, text="就绪", font=("Microsoft YaHei", 9), foreground="#666666")
+        self.progress_label.pack(anchor=tk.W, padx=5, pady=2)
+
         # 提示标签
         ttk.Label(self, text="提示: 支持变量 {pinyin_name}, {index}, {timestamp}, {type}, {chinese_name}", font=("Microsoft YaHei", 9), foreground="#666666").pack(anchor=tk.W, pady=5)
 
@@ -150,9 +160,12 @@ class FileRenamerPanel(ttk.Frame):
         button_frame = ttk.Frame(self)
         button_frame.pack(fill=tk.X, pady=10)
 
-        ttk.Button(button_frame, text="预览", command=self._preview_rename).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="重命名", command=self._rename_files, style="Primary.TButton").pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="移动文件", command=self._move_files, style="Accent.TButton").pack(side=tk.LEFT, padx=5)
+        self.preview_button = ttk.Button(button_frame, text="预览", command=self._preview_rename)
+        self.preview_button.pack(side=tk.LEFT, padx=5)
+        self.rename_button = ttk.Button(button_frame, text="重命名", command=self._rename_files, style="Primary.TButton")
+        self.rename_button.pack(side=tk.LEFT, padx=5)
+        self.move_button = ttk.Button(button_frame, text="移动文件", command=self._move_files, style="Accent.TButton")
+        self.move_button.pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="清空", command=self._clear_fields).pack(side=tk.LEFT, padx=5)
 
     def _browse_folder(self):
@@ -183,53 +196,76 @@ class FileRenamerPanel(ttk.Frame):
             self.main_app.show_message("错误", "请选择目标文件夹", "error")
             return
 
-        try:
-            # 获取文件夹中的所有文件
-            import os
-            file_paths = []
-            for filename in os.listdir(folder_path):
-                file_path = os.path.join(folder_path, filename)
-                if os.path.isfile(file_path):
-                    file_paths.append(file_path)
+        # 禁用按钮
+        self.preview_button.config(state=tk.DISABLED)
+        self.rename_button.config(state=tk.DISABLED)
+        self.move_button.config(state=tk.DISABLED)
 
-            if not file_paths:
-                self.main_app.show_message("警告", "源文件夹中没有文件", "warning")
-                return
+        # 更新进度条
+        self.progress_var.set(0)
+        self.progress_label.config(text="正在移动文件...")
+        self.main_app.update_status("正在移动文件...")
 
-            # 预览移动
-            from src.core.file_renamer import preview_move
-            preview_result = preview_move(file_paths, target_folder)
+        def move_thread():
+            try:
+                # 获取文件夹中的所有文件
+                import os
+                file_paths = []
+                for filename in os.listdir(folder_path):
+                    file_path = os.path.join(folder_path, filename)
+                    if os.path.isfile(file_path):
+                        file_paths.append(file_path)
 
-            # 执行移动
-            from src.core.file_renamer import batch_move_files
-            result = batch_move_files(file_paths, target_folder, overwrite=self.overwrite_var.get())
+                if not file_paths:
+                    self.main_app.show_message("警告", "源文件夹中没有文件", "warning")
+                    return
 
-            # 显示结果
-            moved_count = len(result.get("moved", []))
-            failed_count = len(result.get("failed", []))
+                # 预览移动
+                from src.core.file_renamer import preview_move
+                preview_result = preview_move(file_paths, target_folder)
 
-            if moved_count > 0:
-                message = f"成功移动 {moved_count} 个文件"
-                if failed_count > 0:
-                    message += f"，失败 {failed_count} 个文件"
-                self.main_app.show_message("成功", message, "success")
-                self.main_app.update_status(f"移动完成，成功 {moved_count} 个文件")
-            else:
-                if failed_count > 0:
-                    self.main_app.show_message("警告", f"没有移动任何文件，失败 {failed_count} 个文件", "warning")
+                # 执行移动
+                from src.core.file_renamer import batch_move_files
+                result = batch_move_files(file_paths, target_folder, overwrite=self.overwrite_var.get())
+
+                # 显示结果
+                moved_count = len(result.get("moved", []))
+                failed_count = len(result.get("failed", []))
+
+                if moved_count > 0:
+                    message = f"成功移动 {moved_count} 个文件"
+                    if failed_count > 0:
+                        message += f"，失败 {failed_count} 个文件"
+                    self.main_app.show_message("成功", message, "success")
+                    self.main_app.update_status(f"移动完成，成功 {moved_count} 个文件")
                 else:
-                    self.main_app.show_message("警告", "没有移动任何文件", "warning")
+                    if failed_count > 0:
+                        self.main_app.show_message("警告", f"没有移动任何文件，失败 {failed_count} 个文件", "warning")
+                    else:
+                        self.main_app.show_message("警告", "没有移动任何文件", "warning")
 
-        except FileNotFoundError as e:
-            self.main_app.show_message("错误", f"文件不存在: {str(e)}", "error")
-        except NotADirectoryError as e:
-            self.main_app.show_message("错误", f"路径不是文件夹: {str(e)}", "error")
-        except PermissionError as e:
-            self.main_app.show_message("错误", f"没有权限: {str(e)}", "error")
-        except ValueError as e:
-            self.main_app.show_message("错误", f"参数错误: {str(e)}", "error")
-        except Exception as e:
-            self.main_app.show_message("错误", f"移动失败: {str(e)}", "error")
+            except FileNotFoundError as e:
+                self.main_app.show_message("错误", f"文件不存在: {str(e)}", "error")
+            except NotADirectoryError as e:
+                self.main_app.show_message("错误", f"路径不是文件夹: {str(e)}", "error")
+            except PermissionError as e:
+                self.main_app.show_message("错误", f"没有权限: {str(e)}", "error")
+            except ValueError as e:
+                self.main_app.show_message("错误", f"参数错误: {str(e)}", "error")
+            except Exception as e:
+                self.main_app.show_message("错误", f"移动失败: {str(e)}", "error")
+            finally:
+                # 启用按钮
+                self.progress_var.set(100)
+                self.progress_label.config(text="移动完成")
+                self.preview_button.config(state=tk.NORMAL)
+                self.rename_button.config(state=tk.NORMAL)
+                self.move_button.config(state=tk.NORMAL)
+
+        # 启动后台线程
+        thread = threading.Thread(target=move_thread)
+        thread.daemon = True
+        thread.start()
 
     def _add_rule(self):
         """添加重命名规则"""
@@ -568,44 +604,68 @@ class FileRenamerPanel(ttk.Frame):
             self.main_app.show_message("错误", "请选择文件夹", "error")
             return
 
-        try:
-            if self.rename_rules:
-                # 使用规则预览
-                from src.core.file_renamer import preview_rename_with_rules
-                preview_list = preview_rename_with_rules(folder_path, self.rename_rules, recursive=False)
-            else:
-                # 使用传统命名规则预览
-                if not chinese_name:
-                    self.main_app.show_message("错误", "请输入中文名称", "error")
-                    return
+        # 禁用按钮
+        self.preview_button.config(state=tk.DISABLED)
+        self.rename_button.config(state=tk.DISABLED)
+        self.move_button.config(state=tk.DISABLED)
 
-                # 获取序号参数
-                try:
-                    start_value = int(self.start_value_var.get().strip()) if self.start_value_var.get().strip() else 0
-                except ValueError:
-                    start_value = 0
+        # 更新进度条
+        self.progress_var.set(0)
+        self.progress_label.config(text="正在预览文件...")
+        self.main_app.update_status("正在预览文件...")
 
-                try:
-                    digits = int(self.digits_var.get().strip()) if self.digits_var.get().strip() else 1
-                except ValueError:
-                    digits = 1
+        def preview_thread():
+            try:
+                if self.rename_rules:
+                    # 使用规则预览
+                    from src.core.file_renamer import preview_rename_with_rules
+                    preview_list = preview_rename_with_rules(folder_path, self.rename_rules, recursive=False)
+                else:
+                    # 使用传统命名规则预览
+                    if not chinese_name:
+                        self.main_app.show_message("错误", "请输入中文名称", "error")
+                        return
 
-                try:
-                    increment = int(self.increment_var.get().strip()) if self.increment_var.get().strip() else 1
-                except ValueError:
-                    increment = 1
+                    # 获取序号参数
+                    try:
+                        start_value = int(self.start_value_var.get().strip()) if self.start_value_var.get().strip() else 0
+                    except ValueError:
+                        start_value = 0
 
-                from src.core.file_renamer import preview_rename
-                preview_list = preview_rename(folder_path, chinese_name, start_value=start_value, digits=digits, increment=increment)
+                    try:
+                        digits = int(self.digits_var.get().strip()) if self.digits_var.get().strip() else 1
+                    except ValueError:
+                        digits = 1
 
-            # 显示预览
-            self.preview_text.delete(1.0, tk.END)
-            for old_name, new_name in preview_list:
-                self.preview_text.insert(tk.END, f"{old_name} -> {new_name}\n")
+                    try:
+                        increment = int(self.increment_var.get().strip()) if self.increment_var.get().strip() else 1
+                    except ValueError:
+                        increment = 1
 
-            self.main_app.update_status(f"预览完成，找到 {len(preview_list)} 个文件")
-        except Exception as e:
-            self.main_app.show_message("错误", f"预览失败: {str(e)}", "error")
+                    from src.core.file_renamer import preview_rename
+                    preview_list = preview_rename(folder_path, chinese_name, start_value=start_value, digits=digits, increment=increment)
+
+                # 显示预览
+                self.preview_text.delete(1.0, tk.END)
+                for old_name, new_name in preview_list:
+                    self.preview_text.insert(tk.END, f"{old_name} -> {new_name}\n")
+
+                self.progress_var.set(100)
+                self.progress_label.config(text="预览完成")
+                self.main_app.update_status(f"预览完成，找到 {len(preview_list)} 个文件")
+            except Exception as e:
+                self.main_app.show_message("错误", f"预览失败: {str(e)}", "error")
+                self.progress_label.config(text="预览失败")
+            finally:
+                # 启用按钮
+                self.preview_button.config(state=tk.NORMAL)
+                self.rename_button.config(state=tk.NORMAL)
+                self.move_button.config(state=tk.NORMAL)
+
+        # 启动后台线程
+        thread = threading.Thread(target=preview_thread)
+        thread.daemon = True
+        thread.start()
 
     def _rename_files(self):
         """重命名文件"""
@@ -621,111 +681,134 @@ class FileRenamerPanel(ttk.Frame):
             self.main_app.show_message("错误", "请输入中文名称", "error")
             return
 
-        try:
-            if self.rename_rules:
-                # 使用高级规则重命名
-                from src.core.file_renamer import batch_rename_with_rules
-                result = batch_rename_with_rules(folder_path, self.rename_rules, recursive=False)
+        # 禁用按钮
+        self.preview_button.config(state=tk.DISABLED)
+        self.rename_button.config(state=tk.DISABLED)
+        self.move_button.config(state=tk.DISABLED)
 
-                # 检查是否有错误
-                if "error" in result:
-                    self.main_app.show_message("错误", f"重命名失败: {result['error']}", "error")
-                    return
+        # 更新进度条
+        self.progress_var.set(0)
+        self.progress_label.config(text="正在重命名文件...")
+        self.main_app.update_status("正在重命名文件...")
 
-                renamed_count = len(result.get("renamed", []))
-                failed_count = len(result.get("failed", []))
+        def rename_thread():
+            try:
+                if self.rename_rules:
+                    # 使用高级规则重命名
+                    from src.core.file_renamer import batch_rename_with_rules
+                    result = batch_rename_with_rules(folder_path, self.rename_rules, recursive=False)
 
-                if renamed_count > 0:
-                    message = f"成功重命名 {renamed_count} 个文件"
-                    if failed_count > 0:
-                        message += f"，失败 {failed_count} 个文件"
+                    # 检查是否有错误
+                    if "error" in result:
+                        self.main_app.show_message("错误", f"重命名失败: {result['error']}", "error")
+                        return
 
-                    # 重命名后自动移动
-                    if self.after_rename_var.get():
-                        target_folder = self.target_folder_var.get().strip()
-                        if target_folder:
-                            try:
-                                # 获取重命名后的文件路径
-                                renamed_files = []
-                                for old_name, new_name in result.get("renamed", []):
-                                    renamed_file_path = os.path.join(folder_path, new_name)
-                                    if os.path.exists(renamed_file_path):
-                                        renamed_files.append(renamed_file_path)
+                    renamed_count = len(result.get("renamed", []))
+                    failed_count = len(result.get("failed", []))
 
-                                if renamed_files:
-                                    from src.core.file_renamer import batch_move_files
-                                    move_result = batch_move_files(renamed_files, target_folder, overwrite=self.overwrite_var.get())
-                                    moved_count = len(move_result.get("moved", []))
-                                    message += f"，并移动 {moved_count} 个文件到目标文件夹"
-                                    self.main_app.update_status(f"成功重命名 {renamed_count} 个文件，移动 {moved_count} 个文件")
-                            except Exception as e:
-                                self.main_app.show_message("警告", f"重命名成功但移动失败: {str(e)}", "warning")
-                                self.main_app.update_status(f"重命名成功，移动失败")
+                    if renamed_count > 0:
+                        message = f"成功重命名 {renamed_count} 个文件"
+                        if failed_count > 0:
+                            message += f"，失败 {failed_count} 个文件"
+
+                        # 重命名后自动移动
+                        if self.after_rename_var.get():
+                            target_folder = self.target_folder_var.get().strip()
+                            if target_folder:
+                                try:
+                                    # 获取重命名后的文件路径
+                                    renamed_files = []
+                                    for old_name, new_name in result.get("renamed", []):
+                                        renamed_file_path = os.path.join(folder_path, new_name)
+                                        if os.path.exists(renamed_file_path):
+                                            renamed_files.append(renamed_file_path)
+
+                                    if renamed_files:
+                                        from src.core.file_renamer import batch_move_files
+                                        move_result = batch_move_files(renamed_files, target_folder, overwrite=self.overwrite_var.get())
+                                        moved_count = len(move_result.get("moved", []))
+                                        message += f"，并移动 {moved_count} 个文件到目标文件夹"
+                                        self.main_app.update_status(f"成功重命名 {renamed_count} 个文件，移动 {moved_count} 个文件")
+                                except Exception as e:
+                                    self.main_app.show_message("警告", f"重命名成功但移动失败: {str(e)}", "warning")
+                                    self.main_app.update_status(f"重命名成功，移动失败")
+                            else:
+                                self.main_app.show_message("警告", "重命名成功但未指定目标文件夹，无法自动移动", "warning")
+                                self.main_app.update_status(f"重命名成功，未移动")
                         else:
-                            self.main_app.show_message("警告", "重命名成功但未指定目标文件夹，无法自动移动", "warning")
-                            self.main_app.update_status(f"重命名成功，未移动")
-                    else:
-                        self.main_app.update_status(f"成功重命名 {renamed_count} 个文件")
+                            self.main_app.update_status(f"成功重命名 {renamed_count} 个文件")
 
-                    self.main_app.show_message("成功", message, "success")
+                        self.main_app.show_message("成功", message, "success")
+                    else:
+                        if failed_count > 0:
+                            self.main_app.show_message("警告", f"没有重命名任何文件，失败 {failed_count} 个文件", "warning")
+                        else:
+                            self.main_app.show_message("警告", "没有重命名任何文件", "warning")
                 else:
-                    if failed_count > 0:
-                        self.main_app.show_message("警告", f"没有重命名任何文件，失败 {failed_count} 个文件", "warning")
+                    # 获取序号参数
+                    try:
+                        start_value = int(self.start_value_var.get().strip()) if self.start_value_var.get().strip() else 0
+                    except ValueError:
+                        start_value = 0
+
+                    try:
+                        digits = int(self.digits_var.get().strip()) if self.digits_var.get().strip() else 1
+                    except ValueError:
+                        digits = 1
+
+                    try:
+                        increment = int(self.increment_var.get().strip()) if self.increment_var.get().strip() else 1
+                    except ValueError:
+                        increment = 1
+
+                    # 使用传统命名规则重命名
+                    from src.core.file_renamer import batch_rename_files
+                    result = batch_rename_files(folder_path, chinese_name, naming_rule, start_value=start_value, digits=digits, increment=increment)
+
+                    if result:
+                        # 重命名后自动移动
+                        if self.after_rename_var.get():
+                            target_folder = self.target_folder_var.get().strip()
+                            if target_folder:
+                                try:
+                                    from src.core.file_renamer import batch_move_files
+                                    move_result = batch_move_files(result, target_folder, overwrite=self.overwrite_var.get())
+                                    moved_count = len(move_result.get("moved", []))
+                                    self.main_app.show_message("成功", f"成功重命名 {len(result)} 个文件，并移动 {moved_count} 个文件到目标文件夹", "success")
+                                    self.main_app.update_status(f"成功重命名 {len(result)} 个文件，移动 {moved_count} 个文件")
+                                except Exception as e:
+                                    self.main_app.show_message("警告", f"重命名成功但移动失败: {str(e)}", "warning")
+                                    self.main_app.update_status(f"重命名成功，移动失败")
+                            else:
+                                self.main_app.show_message("警告", "重命名成功但未指定目标文件夹，无法自动移动", "warning")
+                                self.main_app.update_status(f"重命名成功，未移动")
+                        else:
+                            self.main_app.show_message("成功", f"成功重命名 {len(result)} 个文件", "success")
+                            self.main_app.update_status(f"成功重命名 {len(result)} 个文件")
                     else:
                         self.main_app.show_message("警告", "没有重命名任何文件", "warning")
-            else:
-                # 获取序号参数
-                try:
-                    start_value = int(self.start_value_var.get().strip()) if self.start_value_var.get().strip() else 0
-                except ValueError:
-                    start_value = 0
+            except FileNotFoundError as e:
+                self.main_app.show_message("错误", f"文件不存在: {str(e)}", "error")
+            except NotADirectoryError as e:
+                self.main_app.show_message("错误", f"路径不是文件夹: {str(e)}", "error")
+            except PermissionError as e:
+                self.main_app.show_message("错误", f"没有权限: {str(e)}", "error")
+            except ValueError as e:
+                self.main_app.show_message("错误", f"参数错误: {str(e)}", "error")
+            except Exception as e:
+                self.main_app.show_message("错误", f"重命名失败: {str(e)}", "error")
+            finally:
+                # 启用按钮
+                self.progress_var.set(100)
+                self.progress_label.config(text="重命名完成")
+                self.preview_button.config(state=tk.NORMAL)
+                self.rename_button.config(state=tk.NORMAL)
+                self.move_button.config(state=tk.NORMAL)
 
-                try:
-                    digits = int(self.digits_var.get().strip()) if self.digits_var.get().strip() else 1
-                except ValueError:
-                    digits = 1
-
-                try:
-                    increment = int(self.increment_var.get().strip()) if self.increment_var.get().strip() else 1
-                except ValueError:
-                    increment = 1
-
-                # 使用传统命名规则重命名
-                from src.core.file_renamer import batch_rename_files
-                result = batch_rename_files(folder_path, chinese_name, naming_rule, start_value=start_value, digits=digits, increment=increment)
-
-                if result:
-                    # 重命名后自动移动
-                    if self.after_rename_var.get():
-                        target_folder = self.target_folder_var.get().strip()
-                        if target_folder:
-                            try:
-                                from src.core.file_renamer import batch_move_files
-                                move_result = batch_move_files(result, target_folder, overwrite=self.overwrite_var.get())
-                                moved_count = len(move_result.get("moved", []))
-                                self.main_app.show_message("成功", f"成功重命名 {len(result)} 个文件，并移动 {moved_count} 个文件到目标文件夹", "success")
-                                self.main_app.update_status(f"成功重命名 {len(result)} 个文件，移动 {moved_count} 个文件")
-                            except Exception as e:
-                                self.main_app.show_message("警告", f"重命名成功但移动失败: {str(e)}", "warning")
-                                self.main_app.update_status(f"重命名成功，移动失败")
-                        else:
-                            self.main_app.show_message("警告", "重命名成功但未指定目标文件夹，无法自动移动", "warning")
-                            self.main_app.update_status(f"重命名成功，未移动")
-                    else:
-                        self.main_app.show_message("成功", f"成功重命名 {len(result)} 个文件", "success")
-                        self.main_app.update_status(f"成功重命名 {len(result)} 个文件")
-                else:
-                    self.main_app.show_message("警告", "没有重命名任何文件", "warning")
-        except FileNotFoundError as e:
-            self.main_app.show_message("错误", f"文件不存在: {str(e)}", "error")
-        except NotADirectoryError as e:
-            self.main_app.show_message("错误", f"路径不是文件夹: {str(e)}", "error")
-        except PermissionError as e:
-            self.main_app.show_message("错误", f"没有权限: {str(e)}", "error")
-        except ValueError as e:
-            self.main_app.show_message("错误", f"参数错误: {str(e)}", "error")
-        except Exception as e:
-            self.main_app.show_message("错误", f"重命名失败: {str(e)}", "error")
+        # 启动后台线程
+        thread = threading.Thread(target=rename_thread)
+        thread.daemon = True
+        thread.start()
 
     def _clear_fields(self):
         """清空输入"""

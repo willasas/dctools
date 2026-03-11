@@ -692,12 +692,13 @@ def batch_rename_files(folder_path, chinese_name, naming_rule=None,
     return renamed_files
 
 
-def batch_move_files(file_paths, target_folder, overwrite=False):
+def batch_move_files(file_paths, target_folder, overwrite=False, batch_size=50):
     """
     批量移动文件到指定文件夹
     :param file_paths: 文件路径列表
     :param target_folder: 目标文件夹路径
     :param overwrite: 是否覆盖已存在的文件
+    :param batch_size: 批处理大小，默认50个文件一批
     :return: 移动结果字典
     """
     try:
@@ -714,59 +715,70 @@ def batch_move_files(file_paths, target_folder, overwrite=False):
         print(f"   目标文件夹: {target_folder}")
         print(f"   文件数量: {len(file_paths)}")
         print(f"   覆盖模式: {'是' if overwrite else '否'}")
+        print(f"   批处理大小: {batch_size}")
 
         # 移动文件
         moved_files = []
         failed_files = []
+        total_files = len(file_paths)
 
-        for file_path in file_paths:
-            try:
-                # 检查文件是否存在
-                if not os.path.exists(file_path):
-                    print(f"⚠️ 文件不存在: {file_path}")
-                    failed_files.append(file_path)
-                    continue
+        # 批量处理文件
+        for i in range(0, total_files, batch_size):
+            batch_files = file_paths[i:i + batch_size]
+            batch_start = i + 1
+            batch_end = min(i + batch_size, total_files)
+            print(f"\n📦 处理批次 {batch_start}-{batch_end}/{total_files}")
 
-                # 检查文件是否可访问
-                if not os.access(file_path, os.R_OK):
-                    print(f"⚠️ 没有文件读取权限: {file_path}")
-                    failed_files.append(file_path)
-                    continue
-
-                # 获取文件名
-                file_name = os.path.basename(file_path)
-                target_path = os.path.join(target_folder, file_name)
-
-                # 检查目标文件是否已存在
-                if os.path.exists(target_path):
-                    if overwrite:
-                        print(f"⚠️ 文件已存在，将覆盖: {file_name}")
-                        os.remove(target_path)
-                    else:
-                        print(f"⚠️ 文件已存在，跳过: {file_name}")
+            for file_path in batch_files:
+                try:
+                    # 检查文件是否存在
+                    if not os.path.exists(file_path):
+                        print(f"⚠️ 文件不存在: {file_path}")
                         failed_files.append(file_path)
                         continue
 
-                # 检查目标文件夹是否可写
-                if not os.access(target_folder, os.W_OK):
-                    print(f"⚠️ 没有目标文件夹写入权限: {target_folder}")
-                    failed_files.append(file_path)
-                    continue
+                    # 检查文件是否可访问
+                    if not os.access(file_path, os.R_OK):
+                        print(f"⚠️ 没有文件读取权限: {file_path}")
+                        failed_files.append(file_path)
+                        continue
 
-                # 移动文件
-                try:
-                    shutil.move(file_path, target_path)
-                    moved_files.append((file_path, target_path))
-                    print(f"✅ 移动成功: {file_name} -> {target_folder}")
+                    # 获取文件名
+                    file_name = os.path.basename(file_path)
+                    target_path = os.path.join(target_folder, file_name)
+
+                    # 检查目标文件是否已存在
+                    if os.path.exists(target_path):
+                        if overwrite:
+                            print(f"⚠️ 文件已存在，将覆盖: {file_name}")
+                            os.remove(target_path)
+                        else:
+                            print(f"⚠️ 文件已存在，跳过: {file_name}")
+                            failed_files.append(file_path)
+                            continue
+
+                    # 检查目标文件夹是否可写
+                    if not os.access(target_folder, os.W_OK):
+                        print(f"⚠️ 没有目标文件夹写入权限: {target_folder}")
+                        failed_files.append(file_path)
+                        continue
+
+                    # 移动文件
+                    try:
+                        shutil.move(file_path, target_path)
+                        moved_files.append((file_path, target_path))
+                        # 每10个文件显示一次进度
+                        if len(moved_files) % 10 == 0:
+                            print(f"✅ 已移动 {len(moved_files)}/{total_files} 个文件")
+                    except Exception as e:
+                        print(f"❌ 移动失败: {file_name} - {str(e)}")
+                        failed_files.append(file_path)
+                        continue
+
                 except Exception as e:
-                    print(f"❌ 移动失败: {file_name} - {str(e)}")
+                    print(f"❌ 处理文件失败: {file_path} - {str(e)}")
                     failed_files.append(file_path)
                     continue
-
-            except Exception as e:
-                print(f"❌ 处理文件失败: {file_path} - {str(e)}")
-                failed_files.append(file_path)
-                continue
 
         print(f"\n✅ 批量移动完成！")
         print(f"   成功: {len(moved_files)} 个文件")

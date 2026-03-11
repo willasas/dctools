@@ -16,14 +16,14 @@ def get_file_info(file_path):
     try:
         # 确保文件路径是绝对路径且使用正确的路径分隔符
         file_path = os.path.abspath(file_path)
-        
+
         stat = os.stat(file_path)
         filename = os.path.basename(file_path)
         ext = os.path.splitext(filename)[1].lower()
         size = stat.st_size
         create_time = datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S")
         modify_time = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
-        
+
         return {
             "文件名": filename,
             "扩展名": ext,
@@ -41,14 +41,14 @@ def get_file_info(file_path):
             # 尝试对路径进行编码和解码
             if isinstance(file_path, str):
                 # 尝试使用utf-8编码
-                file_path = file_path.encode('utf-8').decode('utf-8')
+                file_path = file_path.encode('utf-8', errors='ignore').decode('utf-8', errors='ignore')
             stat = os.stat(file_path)
             filename = os.path.basename(file_path)
             ext = os.path.splitext(filename)[1].lower()
             size = stat.st_size
             create_time = datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S")
             modify_time = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
-            
+
             return {
                 "文件名": filename,
                 "扩展名": ext,
@@ -61,8 +61,25 @@ def get_file_info(file_path):
                 "路径": file_path
             }
         except Exception as e2:
-            print(f"⚠️ 获取文件信息失败 {file_path}: {str(e)}")
-            return None
+            # 更详细的错误处理
+            try:
+                # 尝试使用原始路径直接获取文件名
+                filename = os.path.basename(file_path)
+                return {
+                    "文件名": filename,
+                    "扩展名": "",
+                    "大小(字节)": 0,
+                    "大小(KB)": 0,
+                    "大小(MB)": 0,
+                    "创建时间": "",
+                    "修改时间": "",
+                    "文件夹": "",
+                    "路径": file_path,
+                    "错误信息": f"获取文件信息失败: {str(e)}"
+                }
+            except:
+                print(f"⚠️ 获取文件信息失败 {file_path}: {str(e)}")
+                return None
 
 def export_to_excel(file_list, export_name="文件清单", output_dir=None):
     """
@@ -74,42 +91,77 @@ def export_to_excel(file_list, export_name="文件清单", output_dir=None):
     """
     if not file_list:
         raise ValueError("文件列表为空")
-    
+
     print(f"\n📊 开始导出Excel: {export_name}")
     print(f"   文件数量: {len(file_list)}")
-    
+
     # 准备数据
     data = []
-    for file_path in file_list:
+    success_count = 0
+    failed_count = 0
+    total_size = 0
+    file_types = {}
+
+    total_files = len(file_list)
+    for i, file_path in enumerate(file_list, 1):
+        # 显示进度
+        if i % 10 == 0 or i == total_files:
+            print(f"   进度: {i}/{total_files} ({int(i/total_files*100)}%)")
+
         info = get_file_info(file_path)
         if info:
             data.append(info)
-    
+            success_count += 1
+            # 累计文件大小
+            if "大小(字节)" in info and info["大小(字节)"]:
+                total_size += info["大小(字节)"]
+            # 统计文件类型
+            if "扩展名" in info and info["扩展名"]:
+                ext = info["扩展名"]
+                file_types[ext] = file_types.get(ext, 0) + 1
+        else:
+            failed_count += 1
+
     if not data:
         raise ValueError("没有有效的文件信息")
-    
+
     # 创建DataFrame
     df = pd.DataFrame(data)
-    
+
     # 重新排列列顺序
-    columns_order = ["文件名", "扩展名", "大小(MB)", "大小(KB)", "大小(字节)", 
+    columns_order = ["文件名", "扩展名", "大小(MB)", "大小(KB)", "大小(字节)",
                     "创建时间", "修改时间", "文件夹", "路径"]
+    # 如果有错误信息列，添加到列顺序中
+    if "错误信息" in df.columns:
+        columns_order.append("错误信息")
     df = df[columns_order]
-    
+
     # 设置输出目录，默认为项目根目录下的result文件夹
     if not output_dir:
         output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "result")
-    
+
     # 确保输出目录存在
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # 创建输出文件名
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     output_file = os.path.join(output_dir, f"{export_name}_{timestamp}.xlsx")
-    
+
     # 导出到Excel
     try:
         df.to_excel(output_file, index=False, engine="openpyxl")
+
+        # 显示统计信息
+        print(f"\n📊 导出统计:")
+        print(f"   成功: {success_count} 个文件")
+        print(f"   失败: {failed_count} 个文件")
+        print(f"   总大小: {round(total_size / (1024 * 1024), 2)} MB")
+        print(f"   文件类型: {len(file_types)} 种")
+        if file_types:
+            print("   类型分布:")
+            for ext, count in sorted(file_types.items(), key=lambda x: x[1], reverse=True)[:10]:  # 只显示前10种类型
+                print(f"     {ext}: {count} 个")
+
         print(f"✅ Excel导出成功: {output_file}")
         return output_file
     except Exception as e:
@@ -127,7 +179,7 @@ def batch_export_folders(folder_list, export_name="文件清单", recursive=True
     """
     if not folder_list:
         raise ValueError("文件夹列表为空")
-    
+
     print(f"\n📊 开始批量导出Excel: {export_name}")
     print(f"   文件夹数量: {len(folder_list)}")
     print(f"   递归子文件夹: {'是' if recursive else '否'}")
@@ -139,7 +191,7 @@ def batch_export_folders(folder_list, export_name="文件清单", recursive=True
         if not os.path.exists(folder_path):
             print(f"⚠️ 文件夹不存在: {folder_path}")
             continue
-        
+
         if recursive:
             for root, dirs, files in os.walk(folder_path):
                 for file in files:

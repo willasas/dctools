@@ -1,6 +1,7 @@
 """文件去重面板"""
 import tkinter as tk
 from tkinter import ttk, filedialog
+import threading
 
 
 class DuplicateRemoverPanel(ttk.Frame):
@@ -55,15 +56,26 @@ class DuplicateRemoverPanel(ttk.Frame):
         self.preview_text = tk.Text(preview_frame, height=10, width=60, font=("Courier New", 10))
         self.preview_text.pack(fill=tk.BOTH, expand=True, padx=5)
 
+        # 进度条
+        progress_frame = ttk.Frame(self)
+        progress_frame.pack(fill=tk.X, pady=10)
+        self.progress_var = tk.DoubleVar()
+        self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_var, maximum=100)
+        self.progress_bar.pack(fill=tk.X, padx=5)
+        self.progress_label = ttk.Label(progress_frame, text="就绪", font=("Microsoft YaHei", 9), foreground="#666666")
+        self.progress_label.pack(anchor=tk.W, padx=5, pady=2)
+
         # 提示标签
-        ttk.Label(self, text="提示: hash方式最准确但速度较慢", font=("Microsoft YaHei", 9), foreground="#666666").pack(anchor=tk.W, pady=5)
+        ttk.Label(self, text="提示: hash方式最准确但速度较慢，已优化为多线程处理", font=("Microsoft YaHei", 9), foreground="#666666").pack(anchor=tk.W, pady=5)
 
         # 按钮
         button_frame = ttk.Frame(self)
         button_frame.pack(fill=tk.X, pady=10)
 
-        ttk.Button(button_frame, text="扫描", command=self._preview_duplicates).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="删除", command=self._remove_duplicates, style="Primary.TButton").pack(side=tk.LEFT, padx=5)
+        self.scan_button = ttk.Button(button_frame, text="扫描", command=self._preview_duplicates)
+        self.scan_button.pack(side=tk.LEFT, padx=5)
+        self.delete_button = ttk.Button(button_frame, text="删除", command=self._remove_duplicates, style="Primary.TButton")
+        self.delete_button.pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="清空", command=self._clear_fields).pack(side=tk.LEFT, padx=5)
 
     def _browse_folder(self):
@@ -82,28 +94,50 @@ class DuplicateRemoverPanel(ttk.Frame):
             self.main_app.show_message("错误", "请选择文件夹", "error")
             return
 
-        try:
-            from src.core.duplicate_remover import preview_duplicates
-            # 重定向输出到预览文本框
-            import io
-            import sys
+        # 禁用按钮
+        self.scan_button.config(state=tk.DISABLED)
+        self.delete_button.config(state=tk.DISABLED)
 
-            old_stdout = sys.stdout
-            sys.stdout = io.StringIO()
+        # 更新进度条
+        self.progress_var.set(0)
+        self.progress_label.config(text="正在扫描文件...")
+        self.main_app.update_status("正在扫描文件...")
 
+        def preview_thread():
             try:
-                removed_count = preview_duplicates(folder_path, method, recursive)
+                from src.core.duplicate_remover import preview_duplicates
+                # 重定向输出到预览文本框
+                import io
+                import sys
+
+                old_stdout = sys.stdout
+                sys.stdout = io.StringIO()
+
+                try:
+                    removed_count = preview_duplicates(folder_path, method, recursive, max_workers=8)
+                finally:
+                    output = sys.stdout.getvalue()
+                    sys.stdout = old_stdout
+
+                # 更新UI
+                self.preview_text.delete(1.0, tk.END)
+                self.preview_text.insert(tk.END, output)
+
+                self.progress_var.set(100)
+                self.progress_label.config(text="扫描完成")
+                self.main_app.update_status(f"扫描完成，发现 {removed_count} 个重复文件")
+            except Exception as e:
+                self.main_app.show_message("错误", f"扫描失败: {str(e)}", "error")
+                self.progress_label.config(text="扫描失败")
             finally:
-                output = sys.stdout.getvalue()
-                sys.stdout = old_stdout
+                # 启用按钮
+                self.scan_button.config(state=tk.NORMAL)
+                self.delete_button.config(state=tk.NORMAL)
 
-            # 显示预览
-            self.preview_text.delete(1.0, tk.END)
-            self.preview_text.insert(tk.END, output)
-
-            self.main_app.update_status(f"扫描完成，发现 {removed_count} 个重复文件")
-        except Exception as e:
-            self.main_app.show_message("错误", f"扫描失败: {str(e)}", "error")
+        # 启动后台线程
+        thread = threading.Thread(target=preview_thread)
+        thread.daemon = True
+        thread.start()
 
     def _remove_duplicates(self):
         """删除重复文件"""
@@ -119,19 +153,41 @@ class DuplicateRemoverPanel(ttk.Frame):
         if not tk.messagebox.askyesno("确认", "确定要删除重复文件吗？此操作不可撤销。"):
             return
 
-        try:
-            from src.core.duplicate_remover import remove_duplicates
-            removed_count = remove_duplicates(folder_path, method, recursive=recursive)
+        # 禁用按钮
+        self.scan_button.config(state=tk.DISABLED)
+        self.delete_button.config(state=tk.DISABLED)
 
-            if removed_count > 0:
-                self.main_app.show_message("成功", f"成功删除 {removed_count} 个重复文件", "success")
-                self.main_app.update_status(f"成功删除 {removed_count} 个重复文件")
-                # 重新扫描以更新预览
-                self._preview_duplicates()
-            else:
-                self.main_app.show_message("警告", "没有删除任何文件", "warning")
-        except Exception as e:
-            self.main_app.show_message("错误", f"删除失败: {str(e)}", "error")
+        # 更新进度条
+        self.progress_var.set(0)
+        self.progress_label.config(text="正在删除重复文件...")
+        self.main_app.update_status("正在删除重复文件...")
+
+        def remove_thread():
+            try:
+                from src.core.duplicate_remover import remove_duplicates
+                removed_count = remove_duplicates(folder_path, method, recursive=recursive, max_workers=8)
+
+                if removed_count > 0:
+                    self.main_app.show_message("成功", f"成功删除 {removed_count} 个重复文件", "success")
+                    self.main_app.update_status(f"成功删除 {removed_count} 个重复文件")
+                    # 重新扫描以更新预览
+                    self._preview_duplicates()
+                else:
+                    self.main_app.show_message("警告", "没有删除任何文件", "warning")
+            except Exception as e:
+                self.main_app.show_message("错误", f"删除失败: {str(e)}", "error")
+                self.progress_label.config(text="删除失败")
+            finally:
+                # 启用按钮
+                self.scan_button.config(state=tk.NORMAL)
+                self.delete_button.config(state=tk.NORMAL)
+                self.progress_var.set(100)
+                self.progress_label.config(text="删除完成")
+
+        # 启动后台线程
+        thread = threading.Thread(target=remove_thread)
+        thread.daemon = True
+        thread.start()
 
     def _clear_fields(self):
         """清空输入"""
