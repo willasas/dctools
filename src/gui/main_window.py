@@ -17,7 +17,8 @@ from src.gui.components import (
     FileRenamerPanel,
     DuplicateRemoverPanel,
     ExcelExporterPanel,
-    FolderInfoPanel
+    FolderInfoPanel,
+    ImagePropertyPanel
 )
 
 
@@ -99,6 +100,7 @@ class MainWindow:
         self.duplicate_remover_panel = DuplicateRemoverPanel(self.notebook, self)
         self.excel_exporter_panel = ExcelExporterPanel(self.notebook, self)
         self.folder_info_panel = FolderInfoPanel(self.notebook, self)
+        self.image_property_panel = ImagePropertyPanel(self.notebook, self)
 
         # 添加选项卡
         self.notebook.add(self.folder_creator_panel, text="📁 文件夹创建")
@@ -106,6 +108,7 @@ class MainWindow:
         self.notebook.add(self.duplicate_remover_panel, text="🗑️ 文件去重")
         self.notebook.add(self.excel_exporter_panel, text="📊 Excel导出")
         self.notebook.add(self.folder_info_panel, text="📋 文件夹信息分析")
+        self.notebook.add(self.image_property_panel, text="🖼️ 图片属性编辑")
 
         # 设置选项卡样式
         style = ttk.Style()
