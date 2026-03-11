@@ -59,6 +59,8 @@ def remove_media_properties(media_path, properties_to_remove=None, remove_all=Fa
                 if remove_all:
                     # 移除所有EXIF数据
                     piexif.remove(media_path)
+                    print(f"✅ 成功移除图片属性: {media_path}")
+                    return True
                 else:
                     # 移除指定属性
                     if properties_to_remove:
@@ -86,9 +88,14 @@ def remove_media_properties(media_path, properties_to_remove=None, remove_all=Fa
                             exif_bytes = piexif.dump(exif_dict)
                             with Image.open(media_path) as img:
                                 img.save(media_path, exif=exif_bytes)
-
-                print(f"✅ 成功移除图片属性: {media_path}")
-                return True
+                            print(f"✅ 成功移除图片属性: {media_path}")
+                            return True
+                        else:
+                            print(f"⚠️ 无法加载图片EXIF数据: {media_path}")
+                            return False
+                    else:
+                        print(f"⚠️ 未指定要移除的属性: {media_path}")
+                        return False
             except Exception as e:
                 print(f"⚠️ 处理图片文件失败 {media_path}: {str(e)}")
                 return False
