@@ -55,16 +55,43 @@ def remove_media_properties(media_path, properties_to_remove=None, remove_all=Fa
 
         # 处理图片文件
         if ext in ['.jpg', '.jpeg', '.png', '.bmp', '.webp']:
-            with Image.open(media_path) as img:
-                # 复制图片数据
-                new_img = Image.new(img.mode, img.size)
-                new_img.putdata(list(img.getdata()))
+            try:
+                if remove_all:
+                    # 移除所有EXIF数据
+                    piexif.remove(media_path)
+                else:
+                    # 移除指定属性
+                    if properties_to_remove:
+                        # 加载EXIF数据
+                        exif_dict = piexif.load(media_path)
 
-                # 保存图片（不包含EXIF数据）
-                new_img.save(media_path)
+                        # 确保exif_dict不是None
+                        if exif_dict:
+                            # 查找并移除指定属性
+                            for prop in properties_to_remove:
+                                # 查找属性对应的tag_id
+                                tag_id = None
+                                for tid, tag in TAGS.items():
+                                    if tag == prop:
+                                        tag_id = tid
+                                        break
+
+                                if tag_id:
+                                    # 检查所有IFD并移除该tag
+                                    for ifd in exif_dict:
+                                        if exif_dict[ifd] and tag_id in exif_dict[ifd]:
+                                            del exif_dict[ifd][tag_id]
+
+                            # 保存修改后的EXIF数据
+                            exif_bytes = piexif.dump(exif_dict)
+                            with Image.open(media_path) as img:
+                                img.save(media_path, exif=exif_bytes)
 
                 print(f"✅ 成功移除图片属性: {media_path}")
                 return True
+            except Exception as e:
+                print(f"⚠️ 处理图片文件失败 {media_path}: {str(e)}")
+                return False
 
         # 处理音频文件
         elif ext in ['.mp3', '.wav', '.flac', '.aac']:
