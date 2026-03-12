@@ -766,25 +766,36 @@ class FileRenamerPanel(ttk.Frame):
                     result = batch_rename_files(folder_path, chinese_name, naming_rule, start_value=start_value, digits=digits, increment=increment)
 
                     if result:
-                        # 重命名后自动移动
-                        if self.after_rename_var.get():
-                            target_folder = self.target_folder_var.get().strip()
-                            if target_folder:
-                                try:
-                                    from src.core.file_renamer import batch_move_files
-                                    move_result = batch_move_files(result, target_folder, overwrite=self.overwrite_var.get())
-                                    moved_count = len(move_result.get("moved", []))
-                                    self.main_app.show_message("成功", f"成功重命名 {len(result)} 个文件，并移动 {moved_count} 个文件到目标文件夹", "success")
-                                    self.main_app.update_status(f"成功重命名 {len(result)} 个文件，移动 {moved_count} 个文件")
-                                except Exception as e:
-                                    self.main_app.show_message("警告", f"重命名成功但移动失败: {str(e)}", "warning")
-                                    self.main_app.update_status(f"重命名成功，移动失败")
+                        renamed_count = len(result.get("renamed", []))
+                        failed_count = len(result.get("failed", []))
+
+                        if renamed_count > 0:
+                            # 重命名后自动移动
+                            if self.after_rename_var.get():
+                                target_folder = self.target_folder_var.get().strip()
+                                if target_folder:
+                                    try:
+                                        from src.core.file_renamer import batch_move_files
+                                        # 从结果字典中获取重命名后的文件路径
+                                        renamed_files = result.get("renamed", [])
+                                        move_result = batch_move_files(renamed_files, target_folder, overwrite=self.overwrite_var.get())
+                                        moved_count = len(move_result.get("moved", []))
+                                        self.main_app.show_message("成功", f"成功重命名 {renamed_count} 个文件，并移动 {moved_count} 个文件到目标文件夹", "success")
+                                        self.main_app.update_status(f"成功重命名 {renamed_count} 个文件，移动 {moved_count} 个文件")
+                                    except Exception as e:
+                                        self.main_app.show_message("警告", f"重命名成功但移动失败: {str(e)}", "warning")
+                                        self.main_app.update_status(f"重命名成功，移动失败")
+                                else:
+                                    self.main_app.show_message("警告", "重命名成功但未指定目标文件夹，无法自动移动", "warning")
+                                    self.main_app.update_status(f"重命名成功，未移动")
                             else:
-                                self.main_app.show_message("警告", "重命名成功但未指定目标文件夹，无法自动移动", "warning")
-                                self.main_app.update_status(f"重命名成功，未移动")
+                                self.main_app.show_message("成功", f"成功重命名 {renamed_count} 个文件", "success")
+                                self.main_app.update_status(f"成功重命名 {renamed_count} 个文件")
                         else:
-                            self.main_app.show_message("成功", f"成功重命名 {len(result)} 个文件", "success")
-                            self.main_app.update_status(f"成功重命名 {len(result)} 个文件")
+                            if failed_count > 0:
+                                self.main_app.show_message("警告", f"没有重命名任何文件，失败 {failed_count} 个文件", "warning")
+                            else:
+                                self.main_app.show_message("警告", "没有重命名任何文件", "warning")
                     else:
                         self.main_app.show_message("警告", "没有重命名任何文件", "warning")
             except FileNotFoundError as e:

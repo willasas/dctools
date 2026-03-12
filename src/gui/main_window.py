@@ -31,7 +31,7 @@ class MainWindow:
         :param root: tkinter根窗口
         """
         self.root = root
-        self.root.title("AI文件管理工具")
+        self.root.title("AI文件管理工具 v1.1.0")
         self.root.geometry("1000x700")
         self.root.minsize(800, 600)
 
@@ -59,34 +59,13 @@ class MainWindow:
         self.main_frame = ttk.Frame(self.root)
         self.main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
-        # 创建标题
-        self._create_title()
-
         # 创建选项卡
         self._create_notebook()
 
         # 创建状态栏
         self._create_status_bar()
 
-    def _create_title(self):
-        """创建标题"""
-        title_frame = ttk.Frame(self.main_frame)
-        title_frame.pack(fill=tk.X, pady=(0, 20))
 
-        title_label = ttk.Label(
-            title_frame,
-            text="AI文件管理工具",
-            font=("Microsoft YaHei", 24, "bold")
-        )
-        title_label.pack(side=tk.LEFT)
-
-        version_label = ttk.Label(
-            title_frame,
-            text="v1.0.0",
-            font=("Microsoft YaHei", 12, "italic"),
-            foreground="#666666"
-        )
-        version_label.pack(side=tk.RIGHT, padx=10)
 
     def _create_notebook(self):
         """创建选项卡"""
@@ -108,7 +87,7 @@ class MainWindow:
         self.notebook.add(self.duplicate_remover_panel, text="🗑️ 文件去重")
         self.notebook.add(self.excel_exporter_panel, text="📊 Excel导出")
         self.notebook.add(self.folder_info_panel, text="📋 文件夹信息分析")
-        self.notebook.add(self.image_property_panel, text="🖼️ 图片属性编辑")
+        self.notebook.add(self.image_property_panel, text="🖼️ 媒体属性编辑")
 
         # 设置选项卡样式
         style = ttk.Style()

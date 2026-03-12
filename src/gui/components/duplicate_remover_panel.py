@@ -106,22 +106,15 @@ class DuplicateRemoverPanel(ttk.Frame):
         def preview_thread():
             try:
                 from src.core.duplicate_remover import preview_duplicates
-                # 重定向输出到预览文本框
-                import io
-                import sys
 
-                old_stdout = sys.stdout
-                sys.stdout = io.StringIO()
-
-                try:
-                    removed_count = preview_duplicates(folder_path, method, recursive, max_workers=8)
-                finally:
-                    output = sys.stdout.getvalue()
-                    sys.stdout = old_stdout
+                # 调用预览函数获取详细信息
+                removed_count, preview_details = preview_duplicates(folder_path, method, recursive, max_workers=8)
 
                 # 更新UI
                 self.preview_text.delete(1.0, tk.END)
-                self.preview_text.insert(tk.END, output)
+                # 将详细信息显示在文本框中
+                for line in preview_details:
+                    self.preview_text.insert(tk.END, line + "\n")
 
                 self.progress_var.set(100)
                 self.progress_label.config(text="扫描完成")

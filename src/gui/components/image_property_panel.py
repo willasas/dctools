@@ -1,15 +1,15 @@
-"""图片属性编辑面板"""
+"""媒体属性编辑面板"""
 import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
 
 class ImagePropertyPanel(ttk.Frame):
-    """图片属性编辑面板"""
+    """媒体属性编辑面板"""
 
     def __init__(self, parent, main_app):
         """
-        初始化图片属性编辑面板
+        初始化媒体属性编辑面板
         :param parent: 父控件
         :param main_app: 主应用实例
         """

@@ -4,6 +4,10 @@ import re
 import shutil
 from datetime import datetime
 from pypinyin import pinyin, Style
+from src.utils.logger import get_logger
+
+# 创建logger实例
+logger = get_logger(__name__)
 
 def get_file_type(file_path):
     """获取文件类型"""
@@ -349,11 +353,11 @@ def batch_rename_with_rules(folder_path, rules, include_hidden=False, recursive=
         if not rules:
             raise ValueError("重命名规则不能为空")
 
-        print(f"\n🔄 开始批量重命名...")
-        print(f"   文件夹: {folder_path}")
-        print(f"   递归: {'是' if recursive else '否'}")
-        print(f"   包含隐藏文件: {'是' if include_hidden else '否'}")
-        print(f"   应用规则数: {len(rules)}")
+        logger.info(f"开始批量重命名...")
+        logger.info(f"文件夹: {folder_path}")
+        logger.info(f"递归: {'是' if recursive else '否'}")
+        logger.info(f"包含隐藏文件: {'是' if include_hidden else '否'}")
+        logger.info(f"应用规则数: {len(rules)}")
 
         # 获取所有文件
         files = []
@@ -371,10 +375,10 @@ def batch_rename_with_rules(folder_path, rules, include_hidden=False, recursive=
                         if include_hidden or not filename.startswith('.'):
                             files.append((folder_path, filename))
         except Exception as e:
-            print(f"❌ 获取文件列表失败: {str(e)}")
+            logger.error(f"获取文件列表失败: {str(e)}")
             return {"renamed": [], "failed": [], "error": str(e)}
 
-        print(f"\n📊 找到 {len(files)} 个文件")
+        logger.info(f"找到 {len(files)} 个文件")
 
         # 重命名文件
         renamed_files = []
@@ -386,12 +390,12 @@ def batch_rename_with_rules(folder_path, rules, include_hidden=False, recursive=
 
                 # 检查文件是否存在且可访问
                 if not os.path.exists(old_path):
-                    print(f"⚠️ 文件不存在: {old_name}")
+                    logger.warning(f"文件不存在: {old_name}")
                     failed_files.append(old_name)
                     continue
 
                 if not os.access(old_path, os.W_OK):
-                    print(f"⚠️ 没有文件写入权限: {old_name}")
+                    logger.warning(f"没有文件写入权限: {old_name}")
                     failed_files.append(old_name)
                     continue
 
@@ -399,25 +403,25 @@ def batch_rename_with_rules(folder_path, rules, include_hidden=False, recursive=
                 try:
                     new_name = apply_rename_rules(old_name, rules)
                 except Exception as e:
-                    print(f"❌ 应用规则失败: {old_name} - {str(e)}")
+                    logger.error(f"应用规则失败: {old_name} - {str(e)}")
                     failed_files.append(old_name)
                     continue
 
                 # 检查新文件名是否与原文件名相同
                 if new_name == old_name:
-                    print(f"⚠️ 文件名未更改: {old_name}")
+                    logger.warning(f"文件名未更改: {old_name}")
                     continue
 
                 # 检查新文件名是否有效
                 if not new_name:
-                    print(f"⚠️ 生成的文件名为空: {old_name}")
+                    logger.warning(f"生成的文件名为空: {old_name}")
                     failed_files.append(old_name)
                     continue
 
                 # 检查新文件名是否包含无效字符
                 invalid_chars = '<>"|?*'
                 if any(char in new_name for char in invalid_chars):
-                    print(f"⚠️ 文件名包含无效字符: {new_name}")
+                    logger.warning(f"文件名包含无效字符: {new_name}")
                     failed_files.append(old_name)
                     continue
 
@@ -425,13 +429,13 @@ def batch_rename_with_rules(folder_path, rules, include_hidden=False, recursive=
 
                 # 检查新文件名是否已存在
                 if os.path.exists(new_path):
-                    print(f"⚠️ 文件已存在，跳过: {new_name}")
+                    logger.warning(f"文件已存在，跳过: {new_name}")
                     failed_files.append(old_name)
                     continue
 
                 # 检查新文件路径是否可写
                 if not os.access(root, os.W_OK):
-                    print(f"⚠️ 没有目录写入权限: {root}")
+                    logger.warning(f"没有目录写入权限: {root}")
                     failed_files.append(old_name)
                     continue
 
@@ -439,23 +443,23 @@ def batch_rename_with_rules(folder_path, rules, include_hidden=False, recursive=
                 try:
                     os.rename(old_path, new_path)
                     renamed_files.append((old_name, new_name))
-                    print(f"✅ 重命名成功: {old_name} -> {new_name}")
+                    logger.info(f"重命名成功: {old_name} -> {new_name}")
                 except Exception as e:
-                    print(f"❌ 重命名失败: {old_name} - {str(e)}")
+                    logger.error(f"重命名失败: {old_name} - {str(e)}")
                     failed_files.append(old_name)
                     continue
             except Exception as e:
-                print(f"❌ 处理文件失败: {old_name} - {str(e)}")
+                logger.error(f"处理文件失败: {old_name} - {str(e)}")
                 failed_files.append(old_name)
                 continue
 
     except Exception as e:
-        print(f"❌ 批量重命名失败: {str(e)}")
+        logger.error(f"批量重命名失败: {str(e)}")
         return {"renamed": [], "failed": [], "error": str(e)}
 
-    print(f"\n✅ 批量重命名完成！")
-    print(f"   成功: {len(renamed_files)} 个文件")
-    print(f"   失败: {len(failed_files)} 个文件")
+    logger.info("批量重命名完成！")
+    logger.info(f"成功: {len(renamed_files)} 个文件")
+    logger.info(f"失败: {len(failed_files)} 个文件")
 
     return {
         "renamed": renamed_files,
@@ -492,12 +496,12 @@ def preview_rename(folder_path, chinese_name, start_value=0, digits=1, increment
     if not os.path.exists(folder_path):
         raise FileNotFoundError(f"文件夹不存在: {folder_path}")
 
-    print("\n🔍 重命名预览:")
-    print(f"   文件夹: {folder_path}")
-    print(f"   中文名称: {chinese_name}")
-    print(f"   初始值: {start_value}")
-    print(f"   位数: {digits}")
-    print(f"   增量: {increment}")
+    logger.info("重命名预览:")
+    logger.info(f"文件夹: {folder_path}")
+    logger.info(f"中文名称: {chinese_name}")
+    logger.info(f"初始值: {start_value}")
+    logger.info(f"位数: {digits}")
+    logger.info(f"增量: {increment}")
 
     # 获取所有文件
     files = []
@@ -509,7 +513,7 @@ def preview_rename(folder_path, chinese_name, start_value=0, digits=1, increment
     # 按文件名排序
     files.sort()
 
-    print(f"\n📊 找到 {len(files)} 个文件")
+    logger.info(f"找到 {len(files)} 个文件")
 
     # 生成时间戳
     timestamp = get_default_timestamp()
@@ -533,10 +537,10 @@ def preview_rename(folder_path, chinese_name, start_value=0, digits=1, increment
             )
 
             preview_list.append((old_name, new_name))
-            print(f"   {old_name} -> {new_name}")
+            logger.info(f"{old_name} -> {new_name}")
 
         except Exception as e:
-            print(f"❌ 预览失败: {old_name} - {str(e)}")
+            logger.error(f"预览失败: {old_name} - {str(e)}")
 
     return preview_list
 
@@ -553,11 +557,11 @@ def preview_rename_with_rules(folder_path, rules, include_hidden=False, recursiv
     if not os.path.exists(folder_path):
         raise FileNotFoundError(f"文件夹不存在: {folder_path}")
 
-    print(f"\n🔍 重命名规则预览:")
-    print(f"   文件夹: {folder_path}")
-    print(f"   递归: {'是' if recursive else '否'}")
-    print(f"   包含隐藏文件: {'是' if include_hidden else '否'}")
-    print(f"   应用规则数: {len(rules)}")
+    logger.info("重命名规则预览:")
+    logger.info(f"文件夹: {folder_path}")
+    logger.info(f"递归: {'是' if recursive else '否'}")
+    logger.info(f"包含隐藏文件: {'是' if include_hidden else '否'}")
+    logger.info(f"应用规则数: {len(rules)}")
 
     # 获取所有文件
     files = []
@@ -577,7 +581,7 @@ def preview_rename_with_rules(folder_path, rules, include_hidden=False, recursiv
     # 按文件名排序
     files.sort(key=lambda x: x[1])
 
-    print(f"\n📊 找到 {len(files)} 个文件")
+    logger.info(f"找到 {len(files)} 个文件")
 
     # 生成预览
     preview_list = []
@@ -587,10 +591,10 @@ def preview_rename_with_rules(folder_path, rules, include_hidden=False, recursiv
             new_name = apply_rename_rules(old_name, rules)
 
             preview_list.append((old_name, new_name))
-            print(f"   {old_name} -> {new_name}")
+            logger.info(f"{old_name} -> {new_name}")
 
         except Exception as e:
-            print(f"❌ 预览失败: {old_name} - {str(e)}")
+            logger.error(f"预览失败: {old_name} - {str(e)}")
 
     return preview_list
 
@@ -613,15 +617,15 @@ def batch_rename_files(folder_path, chinese_name, naming_rule=None,
     if not os.path.exists(folder_path):
         raise FileNotFoundError(f"文件夹不存在: {folder_path}")
 
-    print("\n🔄 开始批量重命名...")
-    print(f"   文件夹: {folder_path}")
-    print(f"   中文名称: {chinese_name}")
-    print(f"   初始值: {start_value}")
-    print(f"   位数: {digits}")
-    print(f"   增量: {increment}")
-    print(f"   包含隐藏文件: {'是' if include_hidden else '否'}")
-    print(f"   拼音下划线: {'是' if with_underscore else '否'}")
-    print(f"   包含中文: {'是' if include_chinese else '否'}")
+    logger.info("开始批量重命名...")
+    logger.info(f"文件夹: {folder_path}")
+    logger.info(f"中文名称: {chinese_name}")
+    logger.info(f"初始值: {start_value}")
+    logger.info(f"位数: {digits}")
+    logger.info(f"增量: {increment}")
+    logger.info(f"包含隐藏文件: {'是' if include_hidden else '否'}")
+    logger.info(f"拼音下划线: {'是' if with_underscore else '否'}")
+    logger.info(f"包含中文: {'是' if include_chinese else '否'}")
 
     # 获取所有文件
     files = []
@@ -634,7 +638,7 @@ def batch_rename_files(folder_path, chinese_name, naming_rule=None,
     # 按文件名排序
     files.sort()
 
-    print(f"\n📊 找到 {len(files)} 个文件")
+    logger.info(f"找到 {len(files)} 个文件")
 
     # 生成时间戳
     timestamp = get_simple_timestamp()  # 使用不带下划线的时间戳
@@ -646,7 +650,7 @@ def batch_rename_files(folder_path, chinese_name, naming_rule=None,
     if not naming_rule:
         naming_rule = get_default_naming_rule(use_chinese=include_chinese)
 
-    print(f"\n📋 使用命名规则: {naming_rule}")
+    logger.info(f"使用命名规则: {naming_rule}")
 
     # 重命名文件
     renamed_files = []
@@ -668,40 +672,73 @@ def batch_rename_files(folder_path, chinese_name, naming_rule=None,
 
             # 检查新文件名是否已存在
             if os.path.exists(new_path):
-                print(f"⚠️ 文件已存在，跳过: {new_name}")
+                logger.warning(f"文件已存在，跳过: {new_name}")
                 failed_files.append(old_name)
                 continue
 
+            # 检查目录是否可写
+            if not os.access(folder_path, os.W_OK):
+                logger.warning(f"没有目录写入权限: {folder_path}")
+                failed_files.append(old_name)
+                continue
+
+            # 检查文件是否可写（仅记录警告，不直接跳过）
+            if not os.access(old_path, os.W_OK):
+                logger.warning(f"文件可能不可写: {old_name}，将尝试重命名")
+
             # 重命名文件
-            os.rename(old_path, new_path)
-            renamed_files.append(new_path)
-            print(f"✅ 重命名成功: {old_name} -> {new_name}")
+            try:
+                # 尝试使用os.rename
+                os.rename(old_path, new_path)
+                renamed_files.append(new_path)
+                logger.info(f"重命名成功: {old_name} -> {new_name}")
+            except PermissionError as e:
+                logger.error(f"权限错误: {old_name} -> {new_name} - {str(e)}")
+                logger.error(f"尝试使用shutil.move作为备选方案")
+                try:
+                    # 尝试使用shutil.move作为备选方案
+                    import shutil
+                    shutil.move(old_path, new_path)
+                    renamed_files.append(new_path)
+                    logger.info(f"使用shutil.move重命名成功: {old_name} -> {new_name}")
+                except Exception as e2:
+                    logger.error(f"shutil.move也失败: {old_name} -> {new_name} - {str(e2)}")
+                    failed_files.append(old_name)
+            except Exception as e:
+                logger.error(f"重命名失败: {old_name} -> {new_name} - {str(e)}")
+                failed_files.append(old_name)
 
             # 显示进度
             if index % 10 == 0 or index == len(files):
-                print(f"   进度: {index}/{len(files)}")
+                logger.info(f"进度: {index}/{len(files)}")
 
         except Exception as e:
-            print(f"❌ 重命名失败: {old_name} - {str(e)}")
+            logger.error(f"重命名失败: {old_name} - {str(e)}")
             failed_files.append(old_name)
 
-    print(f"\n✅ 批量重命名完成！")
-    print(f"   成功: {len(renamed_files)} 个文件")
-    print(f"   失败: {len(failed_files)} 个文件")
+    logger.info("批量重命名完成！")
+    logger.info(f"成功: {len(renamed_files)} 个文件")
+    logger.info(f"失败: {len(failed_files)} 个文件")
 
-    return renamed_files
+    return {
+        "renamed": renamed_files,
+        "failed": failed_files
+    }
 
 
 def batch_move_files(file_paths, target_folder, overwrite=False, batch_size=50):
     """
     批量移动文件到指定文件夹
-    :param file_paths: 文件路径列表
+    :param file_paths: 文件路径列表或可迭代对象
     :param target_folder: 目标文件夹路径
     :param overwrite: 是否覆盖已存在的文件
     :param batch_size: 批处理大小，默认50个文件一批
     :return: 移动结果字典
     """
     try:
+        # 确保file_paths是一个列表
+        file_paths = list(file_paths) if file_paths else []
+
         if not file_paths:
             raise ValueError("文件路径列表为空")
 
@@ -711,11 +748,11 @@ def batch_move_files(file_paths, target_folder, overwrite=False, batch_size=50):
         # 确保目标文件夹存在
         os.makedirs(target_folder, exist_ok=True)
 
-        print(f"\n🔄 开始批量移动文件...")
-        print(f"   目标文件夹: {target_folder}")
-        print(f"   文件数量: {len(file_paths)}")
-        print(f"   覆盖模式: {'是' if overwrite else '否'}")
-        print(f"   批处理大小: {batch_size}")
+        logger.info("开始批量移动文件...")
+        logger.info(f"目标文件夹: {target_folder}")
+        logger.info(f"文件数量: {len(file_paths)}")
+        logger.info(f"覆盖模式: {'是' if overwrite else '否'}")
+        logger.info(f"批处理大小: {batch_size}")
 
         # 移动文件
         moved_files = []
@@ -727,19 +764,19 @@ def batch_move_files(file_paths, target_folder, overwrite=False, batch_size=50):
             batch_files = file_paths[i:i + batch_size]
             batch_start = i + 1
             batch_end = min(i + batch_size, total_files)
-            print(f"\n📦 处理批次 {batch_start}-{batch_end}/{total_files}")
+            logger.info(f"处理批次 {batch_start}-{batch_end}/{total_files}")
 
             for file_path in batch_files:
                 try:
                     # 检查文件是否存在
                     if not os.path.exists(file_path):
-                        print(f"⚠️ 文件不存在: {file_path}")
+                        logger.warning(f"文件不存在: {file_path}")
                         failed_files.append(file_path)
                         continue
 
                     # 检查文件是否可访问
                     if not os.access(file_path, os.R_OK):
-                        print(f"⚠️ 没有文件读取权限: {file_path}")
+                        logger.warning(f"没有文件读取权限: {file_path}")
                         failed_files.append(file_path)
                         continue
 
@@ -750,16 +787,16 @@ def batch_move_files(file_paths, target_folder, overwrite=False, batch_size=50):
                     # 检查目标文件是否已存在
                     if os.path.exists(target_path):
                         if overwrite:
-                            print(f"⚠️ 文件已存在，将覆盖: {file_name}")
+                            logger.warning(f"文件已存在，将覆盖: {file_name}")
                             os.remove(target_path)
                         else:
-                            print(f"⚠️ 文件已存在，跳过: {file_name}")
+                            logger.warning(f"文件已存在，跳过: {file_name}")
                             failed_files.append(file_path)
                             continue
 
                     # 检查目标文件夹是否可写
                     if not os.access(target_folder, os.W_OK):
-                        print(f"⚠️ 没有目标文件夹写入权限: {target_folder}")
+                        logger.warning(f"没有目标文件夹写入权限: {target_folder}")
                         failed_files.append(file_path)
                         continue
 
@@ -769,20 +806,20 @@ def batch_move_files(file_paths, target_folder, overwrite=False, batch_size=50):
                         moved_files.append((file_path, target_path))
                         # 每10个文件显示一次进度
                         if len(moved_files) % 10 == 0:
-                            print(f"✅ 已移动 {len(moved_files)}/{total_files} 个文件")
+                            logger.info(f"已移动 {len(moved_files)}/{total_files} 个文件")
                     except Exception as e:
-                        print(f"❌ 移动失败: {file_name} - {str(e)}")
+                        logger.error(f"移动失败: {file_name} - {str(e)}")
                         failed_files.append(file_path)
                         continue
 
                 except Exception as e:
-                    print(f"❌ 处理文件失败: {file_path} - {str(e)}")
+                    logger.error(f"处理文件失败: {file_path} - {str(e)}")
                     failed_files.append(file_path)
                     continue
 
-        print(f"\n✅ 批量移动完成！")
-        print(f"   成功: {len(moved_files)} 个文件")
-        print(f"   失败: {len(failed_files)} 个文件")
+        logger.info("批量移动完成！")
+        logger.info(f"成功: {len(moved_files)} 个文件")
+        logger.info(f"失败: {len(failed_files)} 个文件")
 
         return {
             "moved": moved_files,
@@ -790,7 +827,7 @@ def batch_move_files(file_paths, target_folder, overwrite=False, batch_size=50):
         }
 
     except Exception as e:
-        print(f"❌ 批量移动失败: {str(e)}")
+        logger.error(f"批量移动失败: {str(e)}")
         return {"moved": [], "failed": [], "error": str(e)}
 
 
@@ -807,9 +844,9 @@ def preview_move(file_paths, target_folder):
     if not target_folder:
         raise ValueError("目标文件夹路径为空")
 
-    print(f"\n🔍 移动预览:")
-    print(f"   目标文件夹: {target_folder}")
-    print(f"   文件数量: {len(file_paths)}")
+    logger.info("移动预览:")
+    logger.info(f"目标文件夹: {target_folder}")
+    logger.info(f"文件数量: {len(file_paths)}")
 
     # 生成预览
     preview_list = []
@@ -817,7 +854,7 @@ def preview_move(file_paths, target_folder):
         try:
             # 检查文件是否存在
             if not os.path.exists(file_path):
-                print(f"⚠️ 文件不存在: {file_path}")
+                logger.warning(f"文件不存在: {file_path}")
                 continue
 
             # 获取文件名
@@ -826,13 +863,13 @@ def preview_move(file_paths, target_folder):
 
             # 检查目标文件是否已存在
             if os.path.exists(target_path):
-                print(f"⚠️ 目标文件已存在: {file_name}")
+                logger.warning(f"目标文件已存在: {file_name}")
             else:
-                print(f"   {file_name} -> {target_folder}")
+                logger.info(f"{file_name} -> {target_folder}")
 
             preview_list.append((file_path, target_path))
 
         except Exception as e:
-            print(f"❌ 预览失败: {file_path} - {str(e)}")
+            logger.error(f"预览失败: {file_path} - {str(e)}")
 
     return preview_list
