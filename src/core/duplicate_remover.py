@@ -503,27 +503,32 @@ def preview_duplicates(folder_path, method="name", recursive=True, max_workers=8
 
     # 找出重复文件
     duplicates = []
+    duplicate_groups = []
     for key, file_list in file_dict.items():
         if len(file_list) > 1:
             # 保留第一个，其余的标记为重复
             duplicates.extend(file_list[1:])
+            duplicate_groups.append(file_list)
 
     preview_details.append(f"发现 {len(duplicates)} 个重复文件")
     logger.info(f"发现 {len(duplicates)} 个重复文件")
 
     # 预览删除操作
-    if duplicates:
+    if duplicate_groups:
         preview_details.append(f"处理删除批次 1-{len(duplicates)}/{len(duplicates)}")
         logger.info(f"处理删除批次 1-{len(duplicates)}/{len(duplicates)}")
-        for file_path in duplicates:
-            preview_details.append(f"[预览] 将删除: {file_path}")
-            logger.info(f"[预览] 将删除: {file_path}")
+        
+        # 显示重复文件组
+        for i, file_list in enumerate(duplicate_groups, 1):
+            preview_details.append(f"\n重复文件组 #{i}:")
+            preview_details.append(f"  保留: {file_list[0]}")
+            for file_path in file_list[1:]:
+                preview_details.append(f"  删除: {file_path}")
+                logger.info(f"[预览] 将删除: {file_path}")
     else:
         preview_details.append("没有发现重复文件")
 
-    preview_details.append(f"去重完成！共删除 {len(duplicates)} 个文件")
     preview_details.append(f"重复文件预览完成！共发现 {len(duplicates)} 个重复文件")
-    logger.info(f"去重完成！共删除 {len(duplicates)} 个文件")
     logger.info(f"重复文件预览完成！共发现 {len(duplicates)} 个重复文件")
 
     return len(duplicates), preview_details

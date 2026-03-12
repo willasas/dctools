@@ -215,7 +215,7 @@ def get_all_files_info(folder_path, recursive=True):
     return files_info
 
 
-def analyze_folder_structure(folder_path, output_format="text"):
+def analyze_folder_structure(folder_path, output_format="text", recursive=True):
     """分析文件夹结构并输出"""
     # 参数验证
     if not isinstance(folder_path, str):
@@ -227,9 +227,12 @@ def analyze_folder_structure(folder_path, output_format="text"):
     if not isinstance(output_format, str):
         logger.warning(f"analyze_folder_structure: output_format 必须是字符串类型，当前类型: {type(output_format)}")
         output_format = "text"
+    if not isinstance(recursive, bool):
+        logger.warning(f"analyze_folder_structure: recursive 必须是布尔类型，当前类型: {type(recursive)}")
+        recursive = True
 
     try:
-        info = get_folder_info(folder_path)
+        info = get_folder_info(folder_path, recursive=recursive)
 
         if output_format == "json":
             result = json.dumps(info, ensure_ascii=False, indent=2)
