@@ -6,6 +6,8 @@ import json
 import threading
 import time
 import queue
+import re
+import shutil
 
 from src.utils.logger import get_logger
 from src.core.duplicate_remover import remove_duplicates, preview_duplicates
@@ -458,7 +460,6 @@ class BatchAutomationPanel(tk.Frame):
             return 0
 
         # 匹配命名规则的文件
-        import re
         pattern = r'^\w+_\w+_\d+_(\d+)\.\w+$'
         max_index = 0
 
@@ -591,7 +592,6 @@ class BatchAutomationPanel(tk.Frame):
                             # 移动文件
                             moved_count = 0
                             skipped_count = 0
-                            import shutil
                             total_files = len(renamed_files)
                             for i, new_path in enumerate(renamed_files, 1):
                                 try:
