@@ -531,9 +531,12 @@ class BatchAutomationPanel(tk.Frame):
                             self.log("重复文件组:")
                             for detail in preview_details:
                                 self.log(detail)
-                            # 自动删除重复文件（在测试环境中避免对话框）
-                            remove_duplicates(source_path, method="hash", recursive=False)
-                            self.log("重复文件已删除")
+                            # 询问用户是否删除重复文件
+                            if messagebox.askyesno("确认", f"发现 {duplicate_count} 个重复文件，是否删除？"):
+                                remove_duplicates(source_path, method="hash", recursive=False)
+                                self.log("重复文件已删除")
+                            else:
+                                self.log("用户取消删除重复文件")
                     except Exception as e:
                         self.log(f"检查重复文件失败: {str(e)}", "error")
 
