@@ -36,7 +36,8 @@ def print_banner():
     print("  4. 导出Excel清单")
     print("  5. 分析文件夹信息")
     print("  6. 媒体属性编辑")
-    print("  7. 启动GUI界面")
+    print("  7. 批量自动化")
+    print("  8. 启动GUI界面")
     print("  0. 退出程序")
     print("=" * 80)
 
@@ -257,7 +258,7 @@ def main():
 
     while True:
         try:
-            choice = input("\n请选择功能 (0-7): ").strip()
+            choice = input("\n请选择功能 (0-8): ").strip()
 
             if choice == '0':
                 print("\n👋 感谢使用AI文件管理工具，再见！")
@@ -275,6 +276,9 @@ def main():
             elif choice == '6':
                 edit_media_properties_menu()
             elif choice == '7':
+                print("\n⚡ 批量自动化功能")
+                print("此功能已集成到GUI界面中，请通过GUI使用")
+            elif choice == '8':
                 print("\n🚀 启动GUI界面...")
                 run_gui()
                 print_banner()

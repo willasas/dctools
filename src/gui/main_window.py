@@ -18,7 +18,8 @@ from src.gui.components import (
     DuplicateRemoverPanel,
     ExcelExporterPanel,
     FolderInfoPanel,
-    ImagePropertyPanel
+    ImagePropertyPanel,
+    BatchAutomationPanel
 )
 
 
@@ -32,8 +33,8 @@ class MainWindow:
         """
         self.root = root
         self.root.title("AI文件管理工具 v1.1.0")
-        self.root.geometry("1000x700")
-        self.root.minsize(800, 600)
+        self.root.geometry("1200x700")
+        self.root.minsize(1000, 600)
 
         # 设置窗口图标
         # self.root.iconbitmap("icon.ico")
@@ -80,6 +81,7 @@ class MainWindow:
         self.excel_exporter_panel = ExcelExporterPanel(self.notebook, self)
         self.folder_info_panel = FolderInfoPanel(self.notebook, self)
         self.image_property_panel = ImagePropertyPanel(self.notebook, self)
+        self.batch_automation_panel = BatchAutomationPanel(self.notebook, self)
 
         # 添加选项卡
         self.notebook.add(self.folder_creator_panel, text="📁 文件夹创建")
@@ -88,6 +90,7 @@ class MainWindow:
         self.notebook.add(self.excel_exporter_panel, text="📊 Excel导出")
         self.notebook.add(self.folder_info_panel, text="📋 文件夹信息分析")
         self.notebook.add(self.image_property_panel, text="🖼️ 媒体属性编辑")
+        self.notebook.add(self.batch_automation_panel, text="⚡ 批量自动化")
 
         # 设置选项卡样式
         style = ttk.Style()
