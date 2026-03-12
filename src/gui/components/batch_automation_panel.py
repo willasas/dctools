@@ -5,6 +5,7 @@ import os
 import json
 import threading
 import time
+import queue
 
 from src.utils.logger import get_logger
 from src.core.duplicate_remover import remove_duplicates, preview_duplicates
@@ -533,7 +534,6 @@ class BatchAutomationPanel(tk.Frame):
                                 self.log(detail)
 
                             # 使用队列进行线程间通信
-                            import queue
                             result_queue = queue.Queue()
 
                             def ask_delete():
