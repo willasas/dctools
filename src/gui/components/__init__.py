@@ -7,6 +7,7 @@ from .excel_exporter_panel import ExcelExporterPanel
 from .folder_info_panel import FolderInfoPanel
 from .image_property_panel import ImagePropertyPanel
 from .batch_automation_panel import BatchAutomationPanel
+from .novel_renamer_panel import NovelRenamerPanel
 
 __all__ = [
     "FolderCreatorPanel",
@@ -15,5 +16,6 @@ __all__ = [
     "ExcelExporterPanel",
     "FolderInfoPanel",
     "ImagePropertyPanel",
-    "BatchAutomationPanel"
+    "BatchAutomationPanel",
+    "NovelRenamerPanel"
 ]

@@ -19,7 +19,8 @@ from src.gui.components import (
     ExcelExporterPanel,
     FolderInfoPanel,
     ImagePropertyPanel,
-    BatchAutomationPanel
+    BatchAutomationPanel,
+    NovelRenamerPanel
 )
 
 
@@ -82,10 +83,12 @@ class MainWindow:
         self.folder_info_panel = FolderInfoPanel(self.notebook, self)
         self.image_property_panel = ImagePropertyPanel(self.notebook, self)
         self.batch_automation_panel = BatchAutomationPanel(self.notebook, self)
+        self.novel_renamer_panel = NovelRenamerPanel(self.notebook)
 
         # 添加选项卡
         self.notebook.add(self.folder_creator_panel, text="📁 文件夹创建")
         self.notebook.add(self.file_renamer_panel, text="✏️ 文件重命名")
+        self.notebook.add(self.novel_renamer_panel, text="📚 小说重命名")
         self.notebook.add(self.duplicate_remover_panel, text="🗑️ 文件去重")
         self.notebook.add(self.excel_exporter_panel, text="📊 Excel导出")
         self.notebook.add(self.folder_info_panel, text="📋 文件夹信息分析")
