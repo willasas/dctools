@@ -1,0 +1,193 @@
+"""主窗口模块"""
+import tkinter as tk
+from tkinter import ttk, messagebox
+import os
+
+# 尝试导入tkinterdnd2
+use_tkinterdnd = False
+try:
+    from tkinterdnd2 import TkinterDnD
+    use_tkinterdnd = True
+    print("tkinterdnd2 库可用，启用拖拽功能")
+except ImportError:
+    print("tkinterdnd2 库不可用，使用标准Tkinter")
+
+from src.gui.components import (
+    FolderCreatorPanel,
+    FileRenamerPanel,
+    DuplicateRemoverPanel,
+    ExcelExporterPanel,
+    FolderInfoPanel,
+    ImagePropertyPanel,
+    BatchAutomationPanel
+)
+
+
+class MainWindow:
+    """主窗口类"""
+
+    def __init__(self, root):
+        """
+        初始化主窗口
+        :param root: tkinter根窗口
+        """
+        self.root = root
+        self.root.title("AI文件管理工具 v1.1.0")
+        self.root.geometry("1200x700")
+        self.root.minsize(1000, 600)
+
+        # 设置窗口图标
+        # self.root.iconbitmap("icon.ico")
+
+        # 设置主题色
+        self.theme = {
+            "primary": "#4CAF50",
+            "secondary": "#2196F3",
+            "accent": "#FF9800",
+            "background": "#f5f5f5",
+            "foreground": "#333333",
+            "light": "#ffffff",
+            "dark": "#263238",
+            "success": "#4CAF50",
+            "warning": "#FFC107",
+            "error": "#F44336"
+        }
+
+        # 设置窗口背景
+        self.root.configure(bg=self.theme["background"])
+
+        # 创建主容器
+        self.main_frame = ttk.Frame(self.root)
+        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+
+        # 创建选项卡
+        self._create_notebook()
+
+        # 创建状态栏
+        self._create_status_bar()
+
+
+
+    def _create_notebook(self):
+        """创建选项卡"""
+        # 创建选项卡控件
+        self.notebook = ttk.Notebook(self.main_frame, style="TNotebook")
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+
+        # 创建各个功能面板
+        self.folder_creator_panel = FolderCreatorPanel(self.notebook, self)
+        self.file_renamer_panel = FileRenamerPanel(self.notebook, self)
+        self.duplicate_remover_panel = DuplicateRemoverPanel(self.notebook, self)
+        self.excel_exporter_panel = ExcelExporterPanel(self.notebook, self)
+        self.folder_info_panel = FolderInfoPanel(self.notebook, self)
+        self.image_property_panel = ImagePropertyPanel(self.notebook, self)
+        self.batch_automation_panel = BatchAutomationPanel(self.notebook, self)
+
+        # 添加选项卡
+        self.notebook.add(self.folder_creator_panel, text="📁 文件夹创建")
+        self.notebook.add(self.file_renamer_panel, text="✏️ 文件重命名")
+        self.notebook.add(self.duplicate_remover_panel, text="🗑️ 文件去重")
+        self.notebook.add(self.excel_exporter_panel, text="📊 Excel导出")
+        self.notebook.add(self.folder_info_panel, text="📋 文件夹信息分析")
+        self.notebook.add(self.image_property_panel, text="🖼️ 媒体属性编辑")
+        self.notebook.add(self.batch_automation_panel, text="⚡ 批量自动化")
+
+        # 设置选项卡样式
+        style = ttk.Style()
+        # 重置样式，使用更简单的设置确保文字可见
+        style.configure("TNotebook", background=self.theme["background"])
+        style.configure("TNotebook.Tab",
+                       background="#ffffff",
+                       foreground="#000000",
+                       padding=[15, 8],
+                       font=("SimHei", 11))
+        style.map("TNotebook.Tab",
+                  background=[("selected", "#4CAF50")],
+                  foreground=[("selected", "#000000")],
+                  font=[("selected", ("SimHei", 11, "bold"))])
+
+    def _create_status_bar(self):
+        """创建状态栏"""
+        self.status_frame = ttk.Frame(self.root, height=30, style="StatusBar.TFrame")
+        self.status_frame.pack(fill=tk.X, side=tk.BOTTOM)
+
+        self.status_label = ttk.Label(
+            self.status_frame,
+            text="就绪",
+            font=("Microsoft YaHei", 10),
+            foreground="#666666"
+        )
+        self.status_label.pack(side=tk.LEFT, padx=10)
+
+        # 设置状态栏样式
+        style = ttk.Style()
+        style.configure("StatusBar.TFrame", background=self.theme["light"])
+
+    def update_status(self, message, type="info"):
+        """
+        更新状态栏消息
+        :param message: 消息内容
+        :param type: 消息类型 (info, success, warning, error)
+        """
+        self.status_label.config(text=message)
+
+        # 根据类型设置颜色
+        if type == "success":
+            self.status_label.config(foreground=self.theme["success"])
+        elif type == "warning":
+            self.status_label.config(foreground=self.theme["warning"])
+        elif type == "error":
+            self.status_label.config(foreground=self.theme["error"])
+        else:
+            self.status_label.config(foreground="#666666")
+
+    def show_message(self, title, message, type="info"):
+        """
+        显示消息框
+        :param title: 标题
+        :param message: 消息内容
+        :param type: 消息类型 (info, success, warning, error, askyesno)
+        :return: 对于askyesno类型，返回用户的选择(True/False)，其他类型返回None
+        """
+        try:
+            # 使用root作为父窗口显示消息框
+            if type == "success":
+                messagebox.showinfo(title, message, parent=self.root)
+            elif type == "warning":
+                messagebox.showwarning(title, message, parent=self.root)
+            elif type == "error":
+                messagebox.showerror(title, message, parent=self.root)
+            elif type == "askyesno":
+                return messagebox.askyesno(title, message, parent=self.root)
+            else:
+                messagebox.showinfo(title, message, parent=self.root)
+        except Exception as e:
+            # 兼容模式：如果父窗口有问题，使用默认消息框
+            if type == "success":
+                messagebox.showinfo(title, message)
+            elif type == "warning":
+                messagebox.showwarning(title, message)
+            elif type == "error":
+                messagebox.showerror(title, message)
+            elif type == "askyesno":
+                return messagebox.askyesno(title, message)
+            else:
+                messagebox.showinfo(title, message)
+
+
+def run_gui():
+    """
+    启动GUI界面
+    """
+    if use_tkinterdnd:
+        root = TkinterDnD.Tk()
+        print("使用 TkinterDnD 创建窗口，支持拖拽功能")
+    else:
+        root = tk.Tk()
+        print("使用标准 Tkinter 创建窗口")
+    app = MainWindow(root)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    run_gui()
